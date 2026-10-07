@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ACTION_UI, EVENT_LABELS, filterCourses,
+  ACTION_UI, courseFromHash, EVENT_LABELS, filterCourses,
   academicYear, clearDraft, countBySection, emptyCourse, loadDraft, move, parseProgrammes, removeAt, renumber,
   saveDraft, sectionOf, tidy,
 } from "./courseops";
@@ -127,7 +127,7 @@ describe("academicYear", () => {
 
 
 describe("workflow helpers", () => {
-  const me: User = { id: "u1", username: "fac", display_name: "Fac", role: "faculty", department: "CSE", disabled: false };
+  const me: User = { id: "u1", username: "fac", display_name: "Fac", role: "faculty", department: "CSE", disabled: false, email: "" };
   const row = (code: string, owner: string | null, awaiting = false): CourseSummary => ({
     course_code: code, course_title: code, kind: "theory", updated_at: "", errors: 0, warnings: 0, awaiting_me: awaiting,
     department: "CSE", owner_id: owner, owner_name: "", status: "draft", status_label: "Draft", version: 0, approved_version: null,
@@ -145,5 +145,16 @@ describe("workflow helpers", () => {
     expect(ACTION_UI.map((a) => a.action).sort()).toEqual([...actions].sort());
     for (const a of [...actions, "create", "reassign"]) expect(EVENT_LABELS[a]).toBeTruthy();
     expect(ACTION_UI.find((a) => a.action === "request_revision")?.comment).toBe(true);
+  });
+});
+
+describe("courseFromHash", () => {
+  it("reads the course code from an email link", () => {
+    expect(courseFromHash("#course=CSE205")).toBe("CSE205");
+    expect(courseFromHash("#course=AB%2D1")).toBe("AB-1");
+    expect(courseFromHash("#course=")).toBeNull();
+    expect(courseFromHash("#other=CSE205")).toBeNull();
+    expect(courseFromHash("#course=%E0%A4")).toBeNull();
+    expect(courseFromHash("")).toBeNull();
   });
 });

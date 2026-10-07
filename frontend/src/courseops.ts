@@ -146,3 +146,14 @@ export function filterCourses(list: CourseSummary[], filter: ListFilter, me: Use
   if (filter === "review") return list.filter((c) => c.awaiting_me);
   return list;
 }
+
+export const MAIL_STATUS_LABELS: Record<"queued" | "sent" | "failed" | "not_configured", string> = {
+  queued: "Waiting", sent: "Sent", failed: "Failed", not_configured: "Not sent (email not set up)",
+};
+
+/** "#course=CSE205" -> "CSE205" (links in notification emails). */
+export function courseFromHash(hash: string): string | null {
+  const m = /^#course=([^&]+)$/.exec(hash);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch { return null; }
+}

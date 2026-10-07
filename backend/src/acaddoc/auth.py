@@ -36,6 +36,7 @@ class User:
     role: str
     department: str = ""
     disabled: bool = False
+    email: str = ""
 
     @property
     def is_admin(self) -> bool:
@@ -43,12 +44,24 @@ class User:
 
     def public(self) -> dict:
         return {"id": self.id, "username": self.username, "display_name": self.display_name,
-                "role": self.role, "department": self.department, "disabled": self.disabled}
+                "role": self.role, "department": self.department, "disabled": self.disabled, "email": self.email}
 
 
 def user_from_row(row) -> User:
     return User(id=row["id"], username=row["username"], display_name=row["display_name"],
-                role=row["role"], department=row["department"] or "", disabled=bool(row["disabled"]))
+                role=row["role"], department=row["department"] or "", disabled=bool(row["disabled"]),
+                email=row["email"] or "")
+
+
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def normalise_email(raw: str) -> str:
+    """'' means no address. Only the shape is checked; delivery proves the rest."""
+    e = raw.strip()
+    if e and (len(e) > 254 or not _EMAIL.match(e)):
+        raise ValueError(f"'{e}' is not an email address")
+    return e
 
 
 def normalise_username(raw: str) -> str:

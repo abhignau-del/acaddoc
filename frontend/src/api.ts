@@ -1,5 +1,6 @@
 import type {
-  Action, Course, CourseFull, CourseSummary, HistoryEvent, Issue, Role, StructureProblem, User, VersionInfo,
+  Action, Course, CourseFull, CourseSummary, HistoryEvent, Issue, MailRow, MailStatus, Role, StructureProblem, User,
+  VersionInfo,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
@@ -41,11 +42,12 @@ export const api = {
   logout: () => call<void>("/api/auth/logout", { method: "POST" }),
   changePassword: (current_password: string, new_password: string) =>
     call<void>("/api/auth/password", json("POST", { current_password, new_password })),
+  updateProfile: (email: string) => call<{ user: User }>("/api/auth/me", json("PATCH", { email })),
 
   users: () => call<User[]>("/api/users"),
-  addUser: (u: { username: string; display_name: string; password: string; role: Role; department: string }) =>
+  addUser: (u: { username: string; display_name: string; password: string; role: Role; department: string; email: string }) =>
     call<User>("/api/users", json("POST", u)),
-  editUser: (id: string, patch: Partial<Pick<User, "display_name" | "role" | "department" | "disabled">> & { password?: string }) =>
+  editUser: (id: string, patch: Partial<Pick<User, "display_name" | "role" | "department" | "disabled" | "email">> & { password?: string }) =>
     call<User>(`/api/users/${id}`, json("PATCH", patch)),
 
   list: () => call<CourseSummary[]>("/api/courses"),
@@ -62,6 +64,10 @@ export const api = {
   validate: (draft: unknown) =>
     call<{ structure: StructureProblem[]; issues: Issue[] }>("/api/validate", json("POST", draft)),
   programmes: () => call<string[]>("/api/programmes"),
+
+  mailStatus: () => call<MailStatus>("/api/admin/mail"),
+  mailTest: () => call<MailRow>("/api/admin/mail/test", { method: "POST" }),
+  mailRetry: (id: number) => call<MailRow>(`/api/admin/mail/${id}/retry`, { method: "POST" }),
 };
 
 /** Fetch a generated file and hand it to the browser as a download. Returns the response headers. */

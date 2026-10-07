@@ -31,10 +31,13 @@ come out looking identical because no one formats them by hand.
   a draft while the approved one stays in force. Every step is logged with who, when
   and why.
 - **Handbooks use approved versions only** (a preview with current drafts is available).
+- **Email notifications.** The HOD hears when a course is submitted, the dean when the
+  HOD approves, and the author when it is sent back (with the note) or approved. Each
+  email links straight to the course. Everything sent is logged; failures can be retried.
 - Command line for the same operations, and a test suite (backend and frontend).
 
 Not yet: importing existing Word files, PDF from the web app (the command line can
-make PDFs on a machine with Word or LibreOffice), email notifications, single sign-on.
+make PDFs on a machine with Word or LibreOffice), single sign-on.
 
 ## Run it
 
@@ -59,6 +62,24 @@ An account can also be created from the command line:
 `python -m acaddoc user add jdoe --role faculty --display-name "J. Doe" --department CSE`.
 
 When serving over HTTPS, set `ACADDOC_SECURE_COOKIES=1`.
+
+### Email
+
+Notifications are sent through your institution's mail server. Set these before
+starting the server, then use **Email → Send me a test email** to check:
+
+| Setting | Example | |
+|---|---|---|
+| `ACADDOC_SMTP_HOST` | `smtp.office365.com`, `smtp.gmail.com` | required to send |
+| `ACADDOC_SMTP_PORT` | `587` | default 587 (465 for `ssl`) |
+| `ACADDOC_SMTP_SECURITY` | `starttls`, `ssl` or `none` | default `starttls` |
+| `ACADDOC_SMTP_USER` / `ACADDOC_SMTP_PASSWORD` | the sending account | Gmail needs an app password |
+| `ACADDOC_MAIL_FROM` | `acaddoc@college.edu` | defaults to the SMTP user |
+| `ACADDOC_PUBLIC_URL` | `https://acaddoc.college.edu` | for links in emails |
+
+Without `ACADDOC_SMTP_HOST`, notifications are still recorded in the Email log but not
+sent. People set their own address under **Account**; administrators can set it in
+**Users**. Leaving it blank opts out.
 
 For frontend development, run `python -m acaddoc serve` and, in `frontend/`,
 `npm run dev` (http://localhost:5173, API calls are proxied).
@@ -103,6 +124,7 @@ Rules (number of modules, outcomes, objectives, course-code pattern) are in
 | `backend/src/acaddoc/handbook.py` | Programme handbook. |
 | `backend/src/acaddoc/workflow.py` | Who may do what, in which state. |
 | `backend/src/acaddoc/auth.py` | Password hashing (scrypt), sign-in tokens, login throttling. |
+| `backend/src/acaddoc/notify.py` | Who is emailed about what; SMTP sending. |
 | `backend/src/acaddoc/store.py` | SQLite: courses, frozen versions, audit trail, users, sessions. |
 | `backend/src/acaddoc/api.py` | FastAPI app; also serves the built editor. |
 | `backend/samples/` | Fictional sample courses (`tools/make_samples.py`). |

@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type FormE
 import { api, whenSignedOut } from "./api";
 import type { User } from "./types";
 
-interface Session { user: User; signOut: () => Promise<void> }
+interface Session { user: User; signOut: () => Promise<void>; setUser: (u: User) => void }
 const Ctx = createContext<Session | null>(null);
 
 export function useSession(): Session {
@@ -33,7 +33,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (state.loading) return <div className="centre muted">Loading…</div>;
   if (state.needsSetup) return <Setup onDone={(user) => setState({ loading: false, needsSetup: false, user, expired: false })} />;
   if (!state.user) return <Login expired={state.expired} onDone={(user) => setState({ ...state, user, expired: false })} />;
-  return <Ctx.Provider value={{ user: state.user, signOut }}>{children}</Ctx.Provider>;
+  const setUser = (user: User) => setState((x) => ({ ...x, user }));
+  return <Ctx.Provider value={{ user: state.user, signOut, setUser }}>{children}</Ctx.Provider>;
 }
 
 function Login({ onDone, expired }: { onDone: (u: User) => void; expired: boolean }) {

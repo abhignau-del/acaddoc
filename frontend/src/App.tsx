@@ -2,11 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, download } from "./api";
 import { useSession } from "./auth";
 import {
-  academicYear, ACTION_UI, clearDraft, countBySection, emptyCourse, EVENT_LABELS, filterCourses, loadDraft,
+  academicYear, ACTION_UI, clearDraft, countBySection, courseFromHash, emptyCourse, EVENT_LABELS, filterCourses, loadDraft,
   ROLE_LABELS, same, saveDraft, sectionOf, tidy, type Draft, type ListFilter,
 } from "./courseops";
 import { Editor, SECTIONS } from "./Editor";
-import { Modal, PasswordDialog, UsersDialog } from "./people";
+import { AccountDialog, MailDialog, Modal, UsersDialog } from "./people";
 import type {
   Action, Course, CourseFull, CourseSummary, HistoryEvent, Issue, Kind, StructureProblem, User, VersionInfo,
 } from "./types";
@@ -25,12 +25,21 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [dialog, setDialog] = useState<null | "users" | "password">(null);
+  const [dialog, setDialog] = useState<null | "users" | "account" | "mail">(null);
   const [asking, setAsking] = useState<Action | null>(null);
   const [historyTick, setHistoryTick] = useState(0);
 
   const refresh = useCallback(() => api.list().then(setList).catch((e) => setError(String(e.message ?? e))), []);
   useEffect(() => { refresh(); }, [refresh]);
+
+  // A link from a notification email ("…/#course=CSE205") opens that course.
+  useEffect(() => {
+    const go = () => { const code = courseFromHash(location.hash); if (code) select(code); };
+    go();
+    addEventListener("hashchange", go);
+    return () => removeEventListener("hashchange", go);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const editable = !!open && (open.code === null || !!open.full?.can.edit);
   const dirty = !!open && editable && !same(tidy(open.course), open.full && tidy(open.full.course));
@@ -72,6 +81,7 @@ export default function App() {
     try {
       const full = await api.get(code);
       show(full);
+      history.replaceState(null, "", `#course=${encodeURIComponent(code)}`);
       const d = full.can.edit ? loadDraft(code) : null;
       setRestorable(d && !same(tidy(d.course), tidy(full.course)) ? d : null);
     } catch (e) { setError((e as Error).message); }
@@ -148,7 +158,8 @@ export default function App() {
         <span className="spacer" />
         <span className="who">{user.display_name} · {ROLE_LABELS[user.role]}{user.department ? ` · ${user.department}` : ""}</span>
         {user.role === "admin" && <button className="btn on-accent" onClick={() => setDialog("users")}>Users</button>}
-        <button className="btn on-accent" onClick={() => setDialog("password")}>Password</button>
+        {user.role === "admin" && <button className="btn on-accent" onClick={() => setDialog("mail")}>Email</button>}
+        <button className="btn on-accent" onClick={() => setDialog("account")}>Account</button>
         <button className="btn on-accent" onClick={() => { if (confirmLeave()) signOut(); }}>Sign out</button>
       </header>
 
@@ -192,6 +203,7 @@ export default function App() {
         {!open && <div className="empty">
           <h2>Open a course on the left{user.role !== "dean" ? ", or start a new one" : ""}.</h2>
           <p className="muted">You type the content. The institution’s Word template decides how it looks.</p>
+          {!user.email && <p className="note"><span>Add your email under <b>Account</b> to be told when a course needs you.</span></p>}
         </div>}
 
         {open && <>
@@ -250,7 +262,8 @@ export default function App() {
         <RevisionForm busy={busy} onSend={(c) => act(asking, c)} />
       </Modal>}
       {dialog === "users" && <UsersDialog me={user} onClose={() => { setDialog(null); refresh(); }} />}
-      {dialog === "password" && <PasswordDialog onClose={() => setDialog(null)} />}
+      {dialog === "account" && <AccountDialog onClose={() => setDialog(null)} />}
+      {dialog === "mail" && <MailDialog me={user} onClose={() => setDialog(null)} />}
     </div>
   );
 }

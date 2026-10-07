@@ -30,7 +30,18 @@ export type Status = "draft" | "submitted" | "hod_approved" | "approved" | "revi
 export type Role = "admin" | "faculty" | "hod" | "dean";
 export type Action = "submit" | "withdraw" | "hod_approve" | "approve" | "request_revision" | "reopen";
 
-export interface User { id: string; username: string; display_name: string; role: Role; department: string; disabled: boolean }
+export interface User {
+  id: string; username: string; display_name: string; role: Role; department: string; disabled: boolean; email: string;
+}
+
+export interface MailRow {
+  id: number; created_at: string; to_addr: string; subject: string;
+  status: "queued" | "sent" | "failed" | "not_configured"; error: string; sent_at: string | null;
+}
+export interface MailStatus {
+  configured: boolean; host?: string; port?: number; security?: string; sender?: string;
+  public_url: string; outbox: MailRow[];
+}
 
 /** Workflow facts the server keeps beside the content. */
 export interface CourseMeta {

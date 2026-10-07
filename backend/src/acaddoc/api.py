@@ -16,13 +16,13 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 from starlette.background import BackgroundTask
 
-from . import __version__, auth, workflow
+from . import __version__, auth, notify, workflow
 from .auth import User
 from .handbook import build_handbook, semester_of
 from .render import render_docx
@@ -59,6 +59,11 @@ class NewUserBody(BaseModel):
     password: str
     role: str
     department: str = ""
+    email: str = ""
+
+
+class ProfileBody(BaseModel):
+    email: str
 
 
 class UserPatch(BaseModel):
@@ -67,6 +72,7 @@ class UserPatch(BaseModel):
     department: str | None = None
     disabled: bool | None = None
     password: str | None = None
+    email: str | None = None
 
 
 class ActionBody(BaseModel):
@@ -123,9 +129,15 @@ def _bad(e: Exception) -> HTTPException:
     return HTTPException(400, str(e))
 
 
-def create_app(store: Store | None = None, *, secure_cookies: bool | None = None) -> FastAPI:
+_FROM_ENV = object()
+
+
+def create_app(store: Store | None = None, *, secure_cookies: bool | None = None,
+               mailer: "notify.Mailer | None | object" = _FROM_ENV, public_url: str | None = None) -> FastAPI:
     app = FastAPI(title="AcadDoc", version=__version__)
     app.state.store = store or Store()
+    app.state.mailer = notify.SmtpMailer.from_env() if mailer is _FROM_ENV else mailer
+    app.state.public_url = os.environ.get("ACADDOC_PUBLIC_URL", "") if public_url is None else public_url
     if secure_cookies is None:
         secure_cookies = os.environ.get("ACADDOC_SECURE_COOKIES") == "1"
     throttle = auth.LoginThrottle()
@@ -224,6 +236,13 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
         except ValueError as e:
             raise _bad(e)
 
+    @app.patch("/api/auth/me")
+    def update_profile(body: ProfileBody, u: User = Depends(current_user)):
+        try:
+            return {"user": st().update_user(u.id, email=body.email).public()}
+        except ValueError as e:
+            raise _bad(e)
+
     @app.get("/api/users")
     def list_users(_: User = Depends(current_user)):
         return [x.public() for x in st().users()]
@@ -232,7 +251,7 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
     def add_user(body: NewUserBody, _: User = Depends(admin_user)):
         try:
             return st().create_user(body.username, body.display_name, body.password, body.role,
-                                    body.department).public()
+                                    body.department, body.email).public()
         except Conflict as e:
             raise HTTPException(409, str(e))
         except ValueError as e:
@@ -292,7 +311,8 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
         st().delete(code)
 
     @app.post("/api/courses/{code}/actions/{action}")
-    def act(code: str, action: str, body: ActionBody, u: User = Depends(current_user)):
+    def act(code: str, action: str, body: ActionBody, background: BackgroundTasks,
+            u: User = Depends(current_user)):
         if action not in workflow.ACTIONS:
             raise HTTPException(404, f"No action {action}")
         r = record(code)
@@ -310,6 +330,9 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
                                 by=u, comment=comment)
         except Conflict as e:
             raise HTTPException(409, str(e))
+        ids = notify.queue(st(), app.state.mailer, action, r, u, comment, app.state.public_url)
+        if ids:   # sent after the response, so mail problems never hold up the workflow
+            background.add_task(notify.deliver, st(), app.state.mailer, ids)
         return _full(r, u)
 
     @app.get("/api/courses/{code}/history")
@@ -343,6 +366,38 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
         except NotFound:
             raise HTTPException(404, f"No version {n} of {code}")
         return _docx_response(c, f"{code}_v{n}.docx")
+
+    # --- email (admin) -----------------------------------------------------------------------
+
+    @app.get("/api/admin/mail")
+    def mail_status(_: User = Depends(admin_user)):
+        m = app.state.mailer
+        settings = m.describe() if hasattr(m, "describe") else {"configured": m is not None}
+        return {**settings, "public_url": app.state.public_url, "outbox": st().outbox()}
+
+    @app.post("/api/admin/mail/test")
+    def mail_test(me: User = Depends(admin_user)):
+        if not me.email:
+            raise HTTPException(400, "Add your own email address first (Account)")
+        if app.state.mailer is None:
+            raise HTTPException(409, "Email is not configured on the server (see ACADDOC_SMTP_* settings)")
+        mid = st().queue_mail(me.email, "[AcadDoc] Test email",
+                              f"Dear {me.display_name},\n\nEmail from AcadDoc works.\n")
+        notify.deliver(st(), app.state.mailer, [mid])   # now, so the result can be shown
+        return st().mail(mid)
+
+    @app.post("/api/admin/mail/{mid}/retry")
+    def mail_retry(mid: int, _: User = Depends(admin_user)):
+        if app.state.mailer is None:
+            raise HTTPException(409, "Email is not configured on the server")
+        try:
+            row = st().mail(mid)
+        except NotFound:
+            raise HTTPException(404, "No such message")
+        if row["status"] == "sent":
+            raise HTTPException(409, "Already sent")
+        notify.deliver(st(), app.state.mailer, [mid])
+        return st().mail(mid)
 
     @app.get("/api/programmes")
     def programmes(_: User = Depends(current_user)):

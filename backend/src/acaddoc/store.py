@@ -59,6 +59,16 @@ CREATE TABLE IF NOT EXISTS users (
     disabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    to_addr TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    body TEXT NOT NULL,
+    status TEXT NOT NULL,          -- queued, sent, failed, not_configured
+    error TEXT NOT NULL DEFAULT '',
+    sent_at TEXT
+);
 CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -66,7 +76,9 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 """
 
-# Columns added to `courses` after v0.1.0. Older databases are upgraded in place.
+# Columns added after a release. Older databases are upgraded in place.
+_USER_COLUMNS = {"email": "TEXT NOT NULL DEFAULT ''"}
+# Columns added to `courses` after v0.1.0.
 _COURSE_COLUMNS = {
     "department": "TEXT NOT NULL DEFAULT ''",
     "owner_id": "TEXT",
@@ -106,6 +118,10 @@ class Store:
             for col, decl in _COURSE_COLUMNS.items():
                 if col not in have:
                     db.execute(f"ALTER TABLE courses ADD COLUMN {col} {decl}")
+            have = {r["name"] for r in db.execute("PRAGMA table_info(users)")}
+            for col, decl in _USER_COLUMNS.items():
+                if col not in have:
+                    db.execute(f"ALTER TABLE users ADD COLUMN {col} {decl}")
 
     @contextmanager
     def _db(self):
@@ -265,19 +281,21 @@ class Store:
             return db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
 
     def create_user(self, username: str, display_name: str, password: str, role: str,
-                    department: str = "") -> User:
+                    department: str = "", email: str = "") -> User:
         name = auth.normalise_username(username)
         auth.check_password_strength(password)
         if role not in auth.ROLES:
             raise ValueError(f"role must be one of {', '.join(auth.ROLES)}")
         if not display_name.strip():
             raise ValueError("a display name is required")
+        email = auth.normalise_email(email)
         uid = uuid.uuid4().hex
         with self._db() as db:
             try:
-                db.execute("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, 0, ?)",
+                db.execute("INSERT INTO users (id, username, display_name, password_hash, role, department,"
+                           " disabled, created_at, email) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)",
                            (uid, name, display_name.strip(), auth.hash_password(password), role,
-                            department.strip(), _now()))
+                            department.strip(), _now(), email))
             except sqlite3.IntegrityError:
                 raise Conflict(f"the username {name} is taken") from None
         return self.user(uid)
@@ -300,7 +318,7 @@ class Store:
 
     def update_user(self, uid: str, *, display_name: str | None = None, role: str | None = None,
                     department: str | None = None, disabled: bool | None = None,
-                    password: str | None = None) -> User:
+                    password: str | None = None, email: str | None = None) -> User:
         sets, args = [], []
         if display_name is not None:
             if not display_name.strip():
@@ -312,6 +330,8 @@ class Store:
             sets.append("role = ?"); args.append(role)
         if department is not None:
             sets.append("department = ?"); args.append(department.strip())
+        if email is not None:
+            sets.append("email = ?"); args.append(auth.normalise_email(email))
         if disabled is not None:
             sets.append("disabled = ?"); args.append(int(disabled))
         if password is not None:
@@ -351,3 +371,28 @@ class Store:
     def end_session(self, token: str) -> None:
         with self._db() as db:
             db.execute("DELETE FROM sessions WHERE token_hash = ?", (auth.token_hash(token),))
+
+    # --- outgoing email -------------------------------------------------------------
+
+    def queue_mail(self, to_addr: str, subject: str, body: str, *, status: str = "queued") -> int:
+        with self._db() as db:
+            return db.execute("INSERT INTO outbox (created_at, to_addr, subject, body, status) VALUES (?, ?, ?, ?, ?)",
+                              (_now(), to_addr, subject, body, status)).lastrowid
+
+    def mail(self, mid: int) -> dict:
+        with self._db() as db:
+            row = db.execute("SELECT * FROM outbox WHERE id = ?", (mid,)).fetchone()
+        if not row:
+            raise NotFound(mid)
+        return dict(row)
+
+    def mark_mail(self, mid: int, status: str, error: str = "") -> None:
+        with self._db() as db:
+            db.execute("UPDATE outbox SET status = ?, error = ?, sent_at = ? WHERE id = ?",
+                       (status, error[:500], _now() if status == "sent" else None, mid))
+
+    def outbox(self, limit: int = 100) -> list[dict]:
+        with self._db() as db:
+            rows = db.execute("SELECT id, created_at, to_addr, subject, status, error, sent_at FROM outbox"
+                              " ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        return [dict(r) for r in rows]
