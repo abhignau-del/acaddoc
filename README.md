@@ -93,3 +93,7 @@ Rules (number of modules, outcomes, objectives, course-code pattern) are in
 
 Only fictional data is committed. Real syllabi, letterheads and generated documents
 belong in the git-ignored `private-data/` folder.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
