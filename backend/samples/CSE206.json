@@ -1,0 +1,151 @@
+{
+  "course_code": "CSE206",
+  "course_title": "Data Structures Laboratory",
+  "kind": "laboratory",
+  "category": "Core",
+  "offerings": [
+    {
+      "semester": "III",
+      "programmes": [
+        "CSE"
+      ]
+    }
+  ],
+  "hours": {
+    "lecture": 0,
+    "tutorial": 0,
+    "practical": 2,
+    "credits": 1,
+    "contact_classes": 0,
+    "tutorial_classes": 0,
+    "practical_classes": 36,
+    "total_classes": 36
+  },
+  "marks": {
+    "cia": 40,
+    "see": 60,
+    "total": 100
+  },
+  "prerequisite": "Programming for Problem Solving",
+  "overview": "Hands-on implementation of the data structures studied in Data Structures, with emphasis on correctness, testing and measuring performance.",
+  "objectives": [
+    "Implementation of linear data structures in C.",
+    "Implementation of trees and graphs.",
+    "Searching and sorting with measured running times.",
+    "Choice of a data structure for a given problem."
+  ],
+  "outcomes": [
+    {
+      "code": "CO1",
+      "text": "Implement stacks and queues using arrays and linked lists."
+    },
+    {
+      "code": "CO2",
+      "text": "Develop programs that use singly and doubly linked lists."
+    },
+    {
+      "code": "CO3",
+      "text": "Construct binary search trees and perform traversals."
+    },
+    {
+      "code": "CO4",
+      "text": "Implement breadth-first and depth-first graph traversals."
+    },
+    {
+      "code": "CO5",
+      "text": "Compare sorting algorithms by measured running time."
+    },
+    {
+      "code": "CO6",
+      "text": "Design a solution to a case study using suitable data structures."
+    }
+  ],
+  "exercises": [
+    {
+      "title": "Stacks and Queues",
+      "items": [
+        {
+          "text": "Implement a stack using an array.",
+          "subitems": [
+            "Push and pop with overflow checks.",
+            "Convert an infix expression to postfix.",
+            "Evaluate a postfix expression."
+          ]
+        },
+        {
+          "text": "Implement a circular queue using an array.",
+          "subitems": [
+            "Insert and delete elements.",
+            "Display the queue after each operation."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Linked Lists",
+      "items": [
+        {
+          "text": "Create a singly linked list of student records with the following structure.",
+          "table": {
+            "header": [
+              "Field",
+              "Type"
+            ],
+            "rows": [
+              [
+                "roll_no",
+                "int"
+              ],
+              [
+                "name",
+                "char[30]"
+              ],
+              [
+                "cgpa",
+                "float"
+              ]
+            ]
+          },
+          "subitems": [
+            "Insert at the beginning, end and a given position.",
+            "Delete a record by roll number.",
+            "Display the records sorted by CGPA."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Trees",
+      "items": [
+        {
+          "text": "Build a binary search tree from a list of integers.",
+          "subitems": [
+            "Print the inorder, preorder and postorder traversals.",
+            "Search for a key.",
+            "Delete a node with two children."
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Case Study: Library Catalogue",
+      "items": [
+        {
+          "text": "Design and implement a catalogue that supports search by title, author and ISBN. Justify the data structures chosen and measure search times for 10,000 records.",
+          "subitems": []
+        }
+      ]
+    }
+  ],
+  "text_books": [
+    "Ellis Horowitz, Sartaj Sahni, Susan Anderson-Freed, Fundamentals of Data Structures in C, Universities Press, 2nd edition, 2008."
+  ],
+  "reference_books": [],
+  "electronic_resources": [
+    "https://visualgo.net/"
+  ],
+  "materials_online": [
+    "Lab manual",
+    "Lab exercises"
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "course_code": "ENG103",
+  "course_title": "Technical Communication",
+  "kind": "theory",
+  "category": "Foundation",
+  "offerings": [
+    {
+      "semester": "I",
+      "programmes": [
+        "ECE",
+        "ME"
+      ]
+    },
+    {
+      "semester": "II",
+      "programmes": [
+        "CSE"
+      ]
+    }
+  ],
+  "hours": {
+    "lecture": 2,
+    "tutorial": 0,
+    "practical": 0,
+    "credits": 2,
+    "contact_classes": 32,
+    "tutorial_classes": 0,
+    "practical_classes": 0,
+    "total_classes": 32
+  },
+  "marks": {
+    "cia": 40,
+    "see": 60,
+    "total": 100
+  },
+  "prerequisite": "",
+  "overview": "The course builds the listening, speaking, reading and writing skills engineers need at work. Each module pairs a short reading with focused practice in vocabulary, grammar, reading strategy and a writing task.",
+  "objectives": [
+    "Clear pronunciation and appropriate stress and intonation in spoken English.",
+    "Accurate grammar and punctuation in professional writing.",
+    "Reading strategies for technical and general texts.",
+    "The structure and conventions of letters, emails and reports."
+  ],
+  "outcomes": [
+    {
+      "code": "CO1",
+      "text": "Demonstrate active listening in academic and professional settings."
+    },
+    {
+      "code": "CO2",
+      "text": "Explain technical ideas orally with fluency and accuracy."
+    },
+    {
+      "code": "CO3",
+      "text": "Interpret grammatical forms and apply them in context."
+    },
+    {
+      "code": "CO4",
+      "text": "Apply skimming and scanning to extract information from texts."
+    },
+    {
+      "code": "CO5",
+      "text": "Develop well-structured paragraphs, letters and emails."
+    },
+    {
+      "code": "CO6",
+      "text": "Construct a short technical report in a standard format."
+    }
+  ],
+  "modules": [
+    {
+      "title": "Listening and Speaking",
+      "hours": 6,
+      "parts": [
+        {
+          "text": "Reading: an essay on effective listening."
+        },
+        {
+          "label": "Vocabulary",
+          "text": "Word formation, prefixes and suffixes."
+        },
+        {
+          "label": "Grammar",
+          "text": "Articles and prepositions."
+        },
+        {
+          "label": "Writing",
+          "text": "Sentence structure and punctuation."
+        }
+      ]
+    },
+    {
+      "title": "Reading Strategies",
+      "hours": 7,
+      "parts": [
+        {
+          "text": "Reading: an article on emerging technologies."
+        },
+        {
+          "label": "Vocabulary",
+          "text": "Homophones and homonyms."
+        },
+        {
+          "label": "Reading",
+          "text": "Skimming, scanning and guessing meaning from context."
+        },
+        {
+          "label": "Writing",
+          "text": "Paragraph structure, coherence and linkers."
+        }
+      ]
+    },
+    {
+      "title": "Professional Correspondence",
+      "hours": 6,
+      "parts": [
+        {
+          "label": "Grammar",
+          "text": "Tenses and subject-verb agreement."
+        },
+        {
+          "label": "Writing",
+          "text": "Formal letters, emails and email etiquette."
+        }
+      ]
+    },
+    {
+      "title": "Presentations",
+      "hours": 7,
+      "parts": [
+        {
+          "label": "Speaking",
+          "text": "Planning and delivering a short technical presentation."
+        },
+        {
+          "label": "Vocabulary",
+          "text": "Technical vocabulary and collocations."
+        }
+      ]
+    },
+    {
+      "title": "Report Writing",
+      "hours": 6,
+      "parts": [
+        {
+          "label": "Reading",
+          "text": "The SQ3R method."
+        },
+        {
+          "label": "Writing",
+          "text": "Types and structure of technical reports."
+        }
+      ]
+    }
+  ],
+  "text_books": [
+    "Michael Swan, Practical English Usage, Oxford University Press, 4th edition, 2016."
+  ],
+  "reference_books": [
+    "Raymond Murphy, English Grammar in Use, Cambridge University Press, 5th edition, 2019."
+  ],
+  "electronic_resources": [
+    "https://learnenglish.britishcouncil.org/"
+  ],
+  "materials_online": [
+    "Course template",
+    "Tutorial question bank",
+    "Definitions and terminology",
+    "Assignments",
+    "Model question paper",
+    "Lecture notes"
+  ]
+}

@@ -1,0 +1,14 @@
+# Real institutional data, outputs and local databases never go in the repo
+private-data/
+out/
+*.db
+
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/
+
+node_modules/
+frontend/dist/
+
+.claude/

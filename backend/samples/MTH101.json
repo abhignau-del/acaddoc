@@ -1,0 +1,135 @@
+{
+  "course_code": "MTH101",
+  "course_title": "Linear Algebra and Calculus",
+  "kind": "theory",
+  "category": "Foundation",
+  "offerings": [
+    {
+      "semester": "I",
+      "programmes": [
+        "CSE",
+        "ECE",
+        "ME"
+      ]
+    }
+  ],
+  "hours": {
+    "lecture": 3,
+    "tutorial": 1,
+    "practical": 0,
+    "credits": 4,
+    "contact_classes": 48,
+    "tutorial_classes": 16,
+    "practical_classes": 0,
+    "total_classes": 64
+  },
+  "marks": {
+    "cia": 40,
+    "see": 60,
+    "total": 100
+  },
+  "prerequisite": "School-level algebra and calculus",
+  "overview": "This foundation course introduces the linear algebra and calculus used throughout engineering: matrices and linear systems, eigenvalues, functions of one and several variables, and multiple integrals. Each topic is developed with worked engineering applications.",
+  "objectives": [
+    "The rank of a matrix and the solution of systems of linear equations.",
+    "Eigenvalues and eigenvectors and their use in diagonalisation.",
+    "Mean value theorems and the behaviour of functions of several variables.",
+    "Evaluation of multiple integrals and their applications to area and volume."
+  ],
+  "outcomes": [
+    {
+      "code": "CO1",
+      "text": "Determine the rank of a matrix and solve systems of linear equations."
+    },
+    {
+      "code": "CO2",
+      "text": "Compute eigenvalues and eigenvectors and diagonalise square matrices."
+    },
+    {
+      "code": "CO3",
+      "text": "Apply the Cayley-Hamilton theorem to find inverses and powers of matrices."
+    },
+    {
+      "code": "CO4",
+      "text": "Apply mean value theorems to problems involving derivatives."
+    },
+    {
+      "code": "CO5",
+      "text": "Find maxima and minima of functions of several variables."
+    },
+    {
+      "code": "CO6",
+      "text": "Evaluate double and triple integrals to find areas and volumes."
+    }
+  ],
+  "modules": [
+    {
+      "title": "Matrices",
+      "hours": 10,
+      "parts": [
+        {
+          "text": "Rank of a matrix by echelon and normal form; inverse by Gauss-Jordan elimination; consistency and solution of homogeneous and non-homogeneous systems; Gauss-Seidel iteration."
+        }
+      ]
+    },
+    {
+      "title": "Eigenvalues and Eigenvectors",
+      "hours": 10,
+      "parts": [
+        {
+          "text": "Eigenvalues, eigenvectors and their properties; diagonalisation; Cayley-Hamilton theorem; quadratic forms and their reduction to canonical form."
+        }
+      ]
+    },
+    {
+      "title": "Single Variable Calculus",
+      "hours": 9,
+      "parts": [
+        {
+          "text": "Rolle's theorem, Lagrange's and Cauchy's mean value theorems with geometrical interpretation."
+        },
+        {
+          "text": "Taylor's and Maclaurin's series; curve tracing in Cartesian coordinates."
+        }
+      ]
+    },
+    {
+      "title": "Multivariable Calculus",
+      "hours": 10,
+      "parts": [
+        {
+          "text": "Partial differentiation, Euler's theorem, total derivative, Jacobians; maxima and minima of functions of two variables; Lagrange multipliers."
+        }
+      ]
+    },
+    {
+      "title": "Multiple Integrals",
+      "hours": 9,
+      "parts": [
+        {
+          "text": "Double integrals in Cartesian and polar coordinates; change of order of integration; triple integrals; areas and volumes."
+        }
+      ]
+    }
+  ],
+  "text_books": [
+    "B. S. Grewal, Higher Engineering Mathematics, Khanna Publishers, 44th edition, 2017.",
+    "Erwin Kreyszig, Advanced Engineering Mathematics, John Wiley & Sons, 10th edition, 2011."
+  ],
+  "reference_books": [
+    "George B. Thomas, Maurice D. Weir, Joel Hass, Thomas' Calculus, Pearson, 13th edition, 2013.",
+    "Gilbert Strang, Introduction to Linear Algebra, Wellesley-Cambridge Press, 5th edition, 2016."
+  ],
+  "electronic_resources": [
+    "https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/",
+    "https://ocw.mit.edu/courses/18-02-multivariable-calculus-fall-2007/"
+  ],
+  "materials_online": [
+    "Course template",
+    "Tutorial question bank",
+    "Definitions and terminology",
+    "Assignments",
+    "Model question paper",
+    "Lecture notes"
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "course_code": "CSE205",
+  "course_title": "Data Structures",
+  "kind": "theory",
+  "category": "Core",
+  "offerings": [
+    {
+      "semester": "III",
+      "programmes": [
+        "CSE"
+      ]
+    }
+  ],
+  "hours": {
+    "lecture": 3,
+    "tutorial": 0,
+    "practical": 0,
+    "credits": 3,
+    "contact_classes": 48,
+    "tutorial_classes": 0,
+    "practical_classes": 0,
+    "total_classes": 48
+  },
+  "marks": {
+    "cia": 40,
+    "see": 60,
+    "total": 100
+  },
+  "prerequisite": "Programming for Problem Solving",
+  "overview": "The course covers the design, implementation and analysis of fundamental data structures (lists, stacks, queues, trees, graphs and hash tables) and the algorithms that use them.",
+  "objectives": [
+    "Asymptotic analysis of algorithms and data structures.",
+    "Linear data structures and their applications.",
+    "Trees, heaps and search structures.",
+    "Graphs, hashing and their applications."
+  ],
+  "outcomes": [
+    {
+      "code": "CO1",
+      "text": "Analyse the time and space complexity of simple algorithms."
+    },
+    {
+      "code": "CO2",
+      "text": "Implement stacks and queues using arrays and linked lists."
+    },
+    {
+      "code": "CO3",
+      "text": "Apply linked lists to problems such as polynomial arithmetic."
+    },
+    {
+      "code": "CO4",
+      "text": "Construct binary search trees and balanced trees."
+    },
+    {
+      "code": "CO5",
+      "text": "Implement graph traversals and shortest-path algorithms."
+    },
+    {
+      "code": "CO6",
+      "text": "Compare hashing techniques and collision-resolution methods."
+    }
+  ],
+  "modules": [
+    {
+      "title": "Introduction and Linear Structures",
+      "hours": 10,
+      "parts": [
+        {
+          "text": "Asymptotic notation; arrays; stacks and queues with applications such as expression evaluation."
+        }
+      ]
+    },
+    {
+      "title": "Linked Lists",
+      "hours": 9,
+      "parts": [
+        {
+          "text": "Singly, doubly and circular linked lists; operations; polynomial representation."
+        }
+      ]
+    },
+    {
+      "title": "Trees",
+      "hours": 10,
+      "parts": [
+        {
+          "text": "Binary trees and traversals; binary search trees; AVL trees; heaps and priority queues."
+        }
+      ]
+    },
+    {
+      "title": "Graphs",
+      "hours": 10,
+      "parts": [
+        {
+          "text": "Representations; breadth-first and depth-first search; minimum spanning trees; Dijkstra's algorithm."
+        }
+      ]
+    },
+    {
+      "title": "Searching, Sorting and Hashing",
+      "hours": 9,
+      "parts": [
+        {
+          "text": "Linear and binary search; insertion, merge, quick and heap sort; hash functions and collision resolution."
+        }
+      ]
+    }
+  ],
+  "text_books": [
+    "Ellis Horowitz, Sartaj Sahni, Susan Anderson-Freed, Fundamentals of Data Structures in C, Universities Press, 2nd edition, 2008."
+  ],
+  "reference_books": [
+    "Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein, Introduction to Algorithms, MIT Press, 4th edition, 2022.",
+    "Mark Allen Weiss, Data Structures and Algorithm Analysis in C, Pearson, 2nd edition, 1997."
+  ],
+  "electronic_resources": [
+    "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+  ],
+  "materials_online": [
+    "Course template",
+    "Tutorial question bank",
+    "Definitions and terminology",
+    "Assignments",
+    "Model question paper",
+    "Lecture notes"
+  ]
+}
