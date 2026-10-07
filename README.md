@@ -8,7 +8,7 @@ format, one course at a time or as a whole programme handbook.
 how it looks; documents are generated, never hand-formatted. A hundred courses
 come out looking identical because no one formats them by hand.
 
-## What works today (v0.1.0)
+## What works today
 
 - **Web editor** for theory courses (modules) and laboratory courses (exercises with
   sub-tasks and tables). Outcome, module and list numbering is automatic.
@@ -20,11 +20,21 @@ come out looking identical because no one formats them by hand.
 - **DOCX per course**, through a Word template (`backend/templates/course_content.docx`).
 - **Programme handbook**: cover, programme structure, contents with page numbers,
   then every course in semester order. Courses with errors are left out and named.
+- **Sign-in and roles.** Faculty write courses; the HOD of the course's department
+  reviews them; the dean gives final approval; administrators manage accounts and
+  never approve. Nobody reviews a course they own.
+- **Approval workflow:** Draft → Awaiting HOD → Awaiting dean → Approved, with
+  "send back for revision" (a note is required) at either review stage. Courses
+  cannot be edited while in review, and cannot be submitted while rules fail.
+- **Versions and audit trail.** Each submission freezes a numbered version that can be
+  downloaded later. An approved version is never changed: "Start a new version" opens
+  a draft while the approved one stays in force. Every step is logged with who, when
+  and why.
+- **Handbooks use approved versions only** (a preview with current drafts is available).
 - Command line for the same operations, and a test suite (backend and frontend).
 
-Not yet: login and roles, approval workflow, version history, importing existing
-Word files, PDF from the web app (the command line can make PDFs on a machine with
-Word or LibreOffice).
+Not yet: importing existing Word files, PDF from the web app (the command line can
+make PDFs on a machine with Word or LibreOffice), email notifications, single sign-on.
 
 ## Run it
 
@@ -40,8 +50,15 @@ cd ..
 python -m acaddoc serve --seed
 ```
 
-Open http://127.0.0.1:8000. `--seed` loads four fictional sample courses into an
-empty database (`backend/acaddoc.db`; set `ACADDOC_DB` to put it elsewhere).
+Open http://127.0.0.1:8000. The first visit creates the administrator account; the
+administrator then adds faculty, HODs and the dean under **Users**. `--seed` loads four
+fictional sample courses into an empty database (`backend/acaddoc.db`; set `ACADDOC_DB`
+to put it elsewhere); they have no owner until the administrator assigns one.
+
+An account can also be created from the command line:
+`python -m acaddoc user add jdoe --role faculty --display-name "J. Doe" --department CSE`.
+
+When serving over HTTPS, set `ACADDOC_SECURE_COOKIES=1`.
 
 For frontend development, run `python -m acaddoc serve` and, in `frontend/`,
 `npm run dev` (http://localhost:5173, API calls are proxied).
@@ -84,7 +101,9 @@ Rules (number of modules, outcomes, objectives, course-code pattern) are in
 | `backend/src/acaddoc/validate.py` | Institutional rules. |
 | `backend/src/acaddoc/render.py` | Course → DOCX through the template. Decides the text, never the look. |
 | `backend/src/acaddoc/handbook.py` | Programme handbook. |
-| `backend/src/acaddoc/store.py` | SQLite storage (one validated JSON record per course). |
+| `backend/src/acaddoc/workflow.py` | Who may do what, in which state. |
+| `backend/src/acaddoc/auth.py` | Password hashing (scrypt), sign-in tokens, login throttling. |
+| `backend/src/acaddoc/store.py` | SQLite: courses, frozen versions, audit trail, users, sessions. |
 | `backend/src/acaddoc/api.py` | FastAPI app; also serves the built editor. |
 | `backend/samples/` | Fictional sample courses (`tools/make_samples.py`). |
 | `frontend/src/` | React + TypeScript editor. `courseops.ts` holds the tested logic. |

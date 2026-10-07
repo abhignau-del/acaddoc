@@ -5,6 +5,7 @@
     python -m acaddoc handbook  samples --programme CSE --year 2026-27 --pdf
     python -m acaddoc import    samples            # load JSON courses into the database
     python -m acaddoc serve     [--seed]           # web editor at http://127.0.0.1:8000
+    python -m acaddoc user add  NAME --role admin --display-name "A. Admin" [--department CSE]
 """
 from __future__ import annotations
 
@@ -38,7 +39,26 @@ def main(argv=None) -> int:
     i.add_argument("--replace", action="store_true", help="overwrite courses that already exist")
     s = sub.add_parser("serve"); s.add_argument("--port", type=int, default=8000)
     s.add_argument("--seed", action="store_true", help="load the sample courses if the database is empty")
+    u = sub.add_parser("user"); usub = u.add_subparsers(dest="ucmd", required=True)
+    ua = usub.add_parser("add", help="create an account (asks for the password)")
+    ua.add_argument("username"); ua.add_argument("--display-name", required=True)
+    ua.add_argument("--role", required=True, choices=["admin", "faculty", "hod", "dean"])
+    ua.add_argument("--department", default="")
     a = ap.parse_args(argv)
+
+    if a.cmd == "user":
+        import getpass
+
+        from .store import Conflict, Store
+        pw = getpass.getpass("Password: ")
+        if pw != getpass.getpass("Again: "):
+            print("The passwords differ."); return 1
+        try:
+            made = Store().create_user(a.username, a.display_name, pw, a.role, a.department)
+        except (ValueError, Conflict) as e:
+            print(e); return 1
+        print(f"created {made.username} ({made.role})")
+        return 0
 
     if a.cmd == "serve":
         import uvicorn

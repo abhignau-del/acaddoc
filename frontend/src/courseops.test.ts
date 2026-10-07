@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACTION_UI, EVENT_LABELS, filterCourses,
   academicYear, clearDraft, countBySection, emptyCourse, loadDraft, move, parseProgrammes, removeAt, renumber,
   saveDraft, sectionOf, tidy,
 } from "./courseops";
+import type { CourseSummary, User } from "./types";
 
 class MemoryStorage implements Storage {
   private m = new Map<string, string>();
@@ -120,5 +122,28 @@ describe("academicYear", () => {
     expect(academicYear(new Date(2026, 4, 31))).toBe("2025-26");
     expect(academicYear(new Date(2026, 5, 1))).toBe("2026-27");
     expect(academicYear(new Date(2099, 11, 1))).toBe("2099-00");
+  });
+});
+
+
+describe("workflow helpers", () => {
+  const me: User = { id: "u1", username: "fac", display_name: "Fac", role: "faculty", department: "CSE", disabled: false };
+  const row = (code: string, owner: string | null, awaiting = false): CourseSummary => ({
+    course_code: code, course_title: code, kind: "theory", updated_at: "", errors: 0, warnings: 0, awaiting_me: awaiting,
+    department: "CSE", owner_id: owner, owner_name: "", status: "draft", status_label: "Draft", version: 0, approved_version: null,
+  });
+  const list = [row("A1", "u1"), row("B1", "u2", true), row("C1", null)];
+
+  it("filters by owner and by review queue", () => {
+    expect(filterCourses(list, "all", me).map((c) => c.course_code)).toEqual(["A1", "B1", "C1"]);
+    expect(filterCourses(list, "mine", me).map((c) => c.course_code)).toEqual(["A1"]);
+    expect(filterCourses(list, "review", me).map((c) => c.course_code)).toEqual(["B1"]);
+  });
+
+  it("has a button for every server action and a label for every event", () => {
+    const actions = ["submit", "withdraw", "hod_approve", "approve", "request_revision", "reopen"];
+    expect(ACTION_UI.map((a) => a.action).sort()).toEqual([...actions].sort());
+    for (const a of [...actions, "create", "reassign"]) expect(EVENT_LABELS[a]).toBeTruthy();
+    expect(ACTION_UI.find((a) => a.action === "request_revision")?.comment).toBe(true);
   });
 });

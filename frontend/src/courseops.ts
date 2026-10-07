@@ -1,5 +1,5 @@
 // Pure helpers for the editor: no React, no network. Tested in courseops.test.ts.
-import type { Course, Issue, Kind, Outcome, StructureProblem } from "./types";
+import type { Action, Course, CourseSummary, Issue, Kind, Outcome, Role, StructureProblem, User } from "./types";
 
 export const SEMESTERS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 
@@ -113,4 +113,36 @@ export function clearDraft(code: string | null, store: Storage | undefined = glo
 export function academicYear(today = new Date()): string {
   const y = today.getMonth() >= 5 ? today.getFullYear() : today.getFullYear() - 1;   // years start in June
   return `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
+}
+
+// --- people and workflow ------------------------------------------------------------
+
+
+export const ROLE_LABELS: Record<Role, string> = { admin: "Administrator", faculty: "Faculty", hod: "HOD", dean: "Dean" };
+
+/** Workflow buttons, in the order they appear. `comment` = the user must say why. */
+export const ACTION_UI: { action: Action; label: string; primary?: boolean; comment?: boolean; confirm?: string }[] = [
+  { action: "submit", label: "Submit for review", primary: true,
+    confirm: "Submit for review? You cannot edit the course until it is sent back or approved." },
+  { action: "hod_approve", label: "Approve (HOD)", primary: true },
+  { action: "approve", label: "Final approval", primary: true,
+    confirm: "Give final approval? This version becomes the one used in handbooks." },
+  { action: "request_revision", label: "Send back for revision", comment: true },
+  { action: "withdraw", label: "Withdraw submission" },
+  { action: "reopen", label: "Start a new version",
+    confirm: "Start a new version? The approved version stays in force until the new one is approved." },
+];
+
+export const EVENT_LABELS: Record<string, string> = {
+  create: "created the course", submit: "submitted", withdraw: "withdrew the submission",
+  hod_approve: "approved (HOD)", approve: "gave final approval", request_revision: "sent it back",
+  reopen: "started a new version", reassign: "reassigned",
+};
+
+export type ListFilter = "all" | "mine" | "review";
+
+export function filterCourses(list: CourseSummary[], filter: ListFilter, me: User): CourseSummary[] {
+  if (filter === "mine") return list.filter((c) => c.owner_id === me.id);
+  if (filter === "review") return list.filter((c) => c.awaiting_me);
+  return list;
 }

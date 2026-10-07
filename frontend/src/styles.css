@@ -57,9 +57,11 @@ textarea { resize: vertical; width: 100%; }
 
 .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 6px 0; }
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
-.checks { position: sticky; top: 52px; max-height: calc(100vh - 70px); overflow: auto; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
-.checks ul { margin: 6px 0; padding-left: 18px; }
-.checks li { margin: 3px 0; }
+.side { position: sticky; top: 52px; max-height: calc(100vh - 70px); overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.panel { padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); display: flex; flex-direction: column; gap: 6px; }
+.panel ul, .panel ol { margin: 6px 0; padding-left: 18px; }
+.panel li { margin: 3px 0; }
+.panel p { margin: 0; }
 .linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
 .toc { display: flex; flex-direction: column; gap: 2px; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
 .toc a { color: var(--muted); text-decoration: none; }
@@ -100,9 +102,38 @@ textarea { resize: vertical; width: 100%; }
 
 .handbook { gap: 10px; }
 
-@media (max-width: 1100px) { .workspace { grid-template-columns: 1fr; } .checks { position: static; max-height: none; } }
+@media (max-width: 1100px) { .workspace { grid-template-columns: 1fr; } .side { position: static; max-height: none; } }
 @media (max-width: 800px) {
   .app { grid-template-columns: 1fr; }
   .app > aside { border-right: 0; border-bottom: 1px solid var(--line); }
   .indent { margin-left: 0; }
 }
+
+/* sign-in, people, workflow */
+.centre { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.auth { width: min(400px, 100%); gap: 12px; }
+.auth h1 { font-size: 22px; }
+.who { opacity: .9; }
+.btn.on-accent { background: transparent; color: var(--accent-text); border-color: color-mix(in srgb, var(--accent-text) 45%, transparent); }
+.btn.on-accent:hover { border-color: var(--accent-text); }
+.tabs { display: flex; }
+.tabs button { flex: 1; padding: 5px 8px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; margin-left: -1px; }
+.tabs button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.tabs button:last-child { border-radius: 0 6px 6px 0; }
+.tabs button.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.chip { display: inline-block; padding: 0 8px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); }
+.chip.draft { color: var(--muted); }
+.chip.submitted, .chip.hod_approved { color: var(--warn); border-color: var(--warn); }
+.chip.approved { color: var(--good); border-color: var(--good); }
+.chip.revision_required { color: var(--bad); border-color: var(--bad); }
+fieldset.plain { border: 0; margin: 0; padding: 0; min-width: 0; }
+fieldset.plain:disabled .add, fieldset.plain:disabled .rowtools, fieldset.plain:disabled .table-ed .row { display: none; }
+fieldset.plain:disabled input, fieldset.plain:disabled textarea, fieldset.plain:disabled select { background: var(--bg); color: var(--text); }
+.history { list-style: none; padding-left: 0 !important; }
+.history li { border-left: 2px solid var(--line); padding-left: 8px; margin: 8px 0 !important; }
+.history blockquote { margin: 4px 0 0; padding: 6px 8px; background: var(--bg); border-radius: 4px; white-space: pre-wrap; }
+.versions { padding-left: 0 !important; list-style: none; }
+.modal-back { position: fixed; inset: 0; background: rgb(0 0 0 / .35); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.modal { width: min(900px, 100%); max-height: 90vh; overflow: auto; }
+.users { border-collapse: collapse; width: 100%; }
+.users th, .users td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: middle; }

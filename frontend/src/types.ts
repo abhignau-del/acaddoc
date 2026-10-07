@@ -26,6 +26,31 @@ export interface Course {
 export interface Issue { rule: string; severity: "error" | "warning"; where: string; message: string }
 export interface StructureProblem { where: string; message: string }
 
-export interface CourseSummary {
-  course_code: string; course_title: string; kind: Kind; updated_at: string; errors: number; warnings: number;
+export type Status = "draft" | "submitted" | "hod_approved" | "approved" | "revision_required";
+export type Role = "admin" | "faculty" | "hod" | "dean";
+export type Action = "submit" | "withdraw" | "hod_approve" | "approve" | "request_revision" | "reopen";
+
+export interface User { id: string; username: string; display_name: string; role: Role; department: string; disabled: boolean }
+
+/** Workflow facts the server keeps beside the content. */
+export interface CourseMeta {
+  department: string; owner_id: string | null; owner_name: string;
+  status: Status; status_label: string; version: number; approved_version: number | null;
 }
+
+export interface CourseSummary extends CourseMeta {
+  course_code: string; course_title: string; kind: Kind; updated_at: string;
+  errors: number; warnings: number; awaiting_me: boolean;
+}
+
+export type Permissions = Record<"edit" | "delete" | Action, boolean>;
+
+export interface CourseFull extends CourseMeta {
+  course: Course; updated_at: string; issues: Issue[]; can: Permissions;
+}
+
+export interface HistoryEvent {
+  at: string; user_name: string; action: string; from_status: Status | null; to_status: Status | null;
+  version: number | null; comment: string;
+}
+export interface VersionInfo { version: number; created_at: string; created_by: string }
