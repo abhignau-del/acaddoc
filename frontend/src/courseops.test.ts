@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  ACTION_UI, courseFromHash, EVENT_LABELS, filterCourses,
+  ACTION_UI, copoColumns, courseFromHash, cycleStrength, EVENT_LABELS, filterCourses, mappingProgramme, nextOutcomeCode,
+  setLink,
   academicYear, clearDraft, countBySection, emptyCourse, loadDraft, move, parseProgrammes, removeAt, renumber,
   saveDraft, sectionOf, tidy,
 } from "./courseops";
@@ -42,8 +43,8 @@ describe("list editing", () => {
   });
   it("removes by index", () => expect(removeAt(["a", "b", "c"], 1)).toEqual(["a", "c"]));
   it("renumbers outcomes after a removal", () => {
-    const out = renumber(removeAt(renumber([{ code: "", text: "x" }, { code: "", text: "y" }, { code: "", text: "z" }]), 0));
-    expect(out).toEqual([{ code: "CO1", text: "y" }, { code: "CO2", text: "z" }]);
+    const out = renumber(removeAt(renumber([{ code: "", text: "x", po: {} }, { code: "", text: "y", po: {} }, { code: "", text: "z", po: {} }]), 0));
+    expect(out).toEqual([{ code: "CO1", text: "y", po: {} }, { code: "CO2", text: "z", po: {} }]);
   });
 });
 
@@ -79,13 +80,13 @@ describe("tidy", () => {
     const c = emptyCourse("theory");
     c.course_code = " mth101 ";
     c.objectives = ["one", " ", "two"];
-    c.outcomes = renumber([{ code: "", text: "" }, { code: "", text: "Apply x." }]);
+    c.outcomes = renumber([{ code: "", text: "", po: {} }, { code: "", text: "Apply x.", po: {} }]);
     c.modules[0].parts = [{ text: "  " }, { text: "Topic" }];
     c.text_books = ["", "Book"];
     const t = tidy(c);
     expect(t.course_code).toBe("MTH101");
     expect(t.objectives).toEqual(["one", "two"]);
-    expect(t.outcomes).toEqual([{ code: "CO1", text: "Apply x." }]);
+    expect(t.outcomes).toEqual([{ code: "CO1", text: "Apply x.", po: {} }]);
     expect(t.modules[0].parts).toEqual([{ text: "Topic" }]);
     expect(t.text_books).toEqual(["Book"]);
   });
@@ -156,5 +157,65 @@ describe("courseFromHash", () => {
     expect(courseFromHash("#other=CSE205")).toBeNull();
     expect(courseFromHash("#course=%E0%A4")).toBeNull();
     expect(courseFromHash("")).toBeNull();
+  });
+});
+
+describe("CO-PO helpers", () => {
+  const fw = {
+    programme: "CSE", source: "programme" as const, name: "", source_label: "",
+    outcomes: [{ code: "PO1", title: "", text: "a" }, { code: "PO2", title: "", text: "b" }, { code: "PSO1", title: "", text: "c" }],
+  };
+
+  it("cycles a cell none -> 1 -> 2 -> 3 -> none", () => {
+    expect([undefined, 1, 2, 3].map(cycleStrength)).toEqual([1, 2, 3, undefined]);
+  });
+
+  it("sets and clears one link without touching the others", () => {
+    const o = { code: "CO1", text: "x", po: { PO1: 3 } };
+    expect(setLink(o, "PO2", 2).po).toEqual({ PO1: 3, PO2: 2 });
+    expect(setLink(o, "PO1", undefined).po).toEqual({});
+    expect(o.po).toEqual({ PO1: 3 });
+  });
+
+  it("orders columns like the server: framework first, then stray codes", () => {
+    const c = emptyCourse("theory");
+    c.outcomes = [{ code: "CO1", text: "x", po: { PO12: 1, PO1: 2, GA2: 1, PO10: 1 } }];
+    expect(copoColumns(c, fw)).toEqual(["PO1", "PO2", "PSO1", "GA2", "PO10", "PO12"]);
+    expect(copoColumns(c, null)).toEqual(["GA2", "PO1", "PO10", "PO12"]);
+  });
+
+  it("copes with drafts saved before outcomes had a po field", () => {
+    const c = emptyCourse("theory");
+    c.outcomes = [{ code: "CO1", text: "x" } as never];
+    expect(copoColumns(c, fw)).toEqual(["PO1", "PO2", "PSO1"]);
+    expect(setLink(c.outcomes[0], "PO1", 1).po).toEqual({ PO1: 1 });
+  });
+
+  it("finds the mapping programme as the server does", () => {
+    const c = emptyCourse("theory");
+    c.offerings = [{ semester: "I", programmes: [] }, { semester: "II", programmes: ["ECE", "CSE"] }];
+    expect(mappingProgramme(c)).toBe("ECE");
+    expect(mappingProgramme({ ...c, po_programme: "CSE" })).toBe("CSE");
+    expect(mappingProgramme({ ...c, offerings: [] })).toBe("");
+  });
+
+  it("numbers new programme outcomes after the highest", () => {
+    const o = (code: string) => ({ code, title: "", text: "" });
+    expect(nextOutcomeCode([o("PO1"), o("PO9"), o("PSO1")], "PO")).toBe("PO10");
+    expect(nextOutcomeCode([o("PO1"), o("PSO1")], "PSO")).toBe("PSO2");
+    expect(nextOutcomeCode([], "PSO")).toBe("PSO1");
+  });
+
+  it("sends CO-PO issues to the mapping section", () => {
+    expect(sectionOf("copo")).toBe("copo");
+    expect(sectionOf("copo.CO3")).toBe("copo");
+    expect(sectionOf("po_programme")).toBe("copo");
+    expect(sectionOf("outcomes")).toBe("outcomes");
+  });
+
+  it("keeps Bloom levels and links through tidy", () => {
+    const c = emptyCourse("theory");
+    c.outcomes = [{ code: "", text: " ", po: {} }, { code: "", text: "Apply it.", bloom: "apply", po: { PO1: 3 } }];
+    expect(tidy(c).outcomes).toEqual([{ code: "CO1", text: "Apply it.", bloom: "apply", po: { PO1: 3 } }]);
   });
 });

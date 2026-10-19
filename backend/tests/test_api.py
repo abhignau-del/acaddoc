@@ -34,6 +34,7 @@ def env(tmp_path):
         "dean": store.create_user("dean", "Dean", PW, "dean"),
     }
     store.import_dir(SAMPLES, owner=users["fac"], department="CSE")
+    store.import_programmes(SAMPLES / "programmes")
     app = create_app(store)
 
     def client(name: str | None = None) -> TestClient:

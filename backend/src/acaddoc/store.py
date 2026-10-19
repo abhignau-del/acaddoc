@@ -17,7 +17,7 @@ from pathlib import Path
 
 from . import auth
 from .auth import User
-from .schema import Course
+from .schema import Course, ProgrammeRecord
 from .workflow import Meta
 
 DEFAULT_DB = Path(__file__).resolve().parents[2] / "acaddoc.db"
@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS users (
     department TEXT NOT NULL DEFAULT '',
     disabled INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS programmes (
+    code TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    updated_by TEXT
 );
 CREATE TABLE IF NOT EXISTS outbox (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -272,6 +278,37 @@ class Store:
                     continue
                 self.update(c.course_code, c, by=owner)
             done.append(c.course_code)
+        return done
+
+    # --- programme outcomes ----------------------------------------------------------
+
+    def programme_records(self) -> list[tuple[ProgrammeRecord, str, str]]:
+        """(record, updated_at, updated-by name) for every programme with its own outcomes."""
+        with self._db() as db:
+            rows = db.execute("SELECT p.data, p.updated_at, COALESCE(u.display_name, '') AS by_name "
+                              "FROM programmes p LEFT JOIN users u ON u.id = p.updated_by ORDER BY p.code").fetchall()
+        return [(ProgrammeRecord.model_validate_json(r["data"]), r["updated_at"], r["by_name"]) for r in rows]
+
+    def programme_record(self, code: str) -> ProgrammeRecord | None:
+        with self._db() as db:
+            row = db.execute("SELECT data FROM programmes WHERE code = ?", (code,)).fetchone()
+        return ProgrammeRecord.model_validate_json(row["data"]) if row else None
+
+    def save_programme(self, rec: ProgrammeRecord, *, by: User | None = None) -> None:
+        with self._db() as db:
+            db.execute("INSERT INTO programmes (code, data, updated_at, updated_by) VALUES (?, ?, ?, ?) "
+                       "ON CONFLICT(code) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, "
+                       "updated_by = excluded.updated_by",
+                       (rec.code, rec.model_dump_json(), _now(), by.id if by else None))
+
+    def import_programmes(self, folder: Path, *, replace: bool = False) -> list[str]:
+        done = []
+        for f in sorted(Path(folder).glob("*.json")):
+            rec = ProgrammeRecord.model_validate_json(f.read_text(encoding="utf-8"))
+            if self.programme_record(rec.code) is not None and not replace:
+                continue
+            self.save_programme(rec)
+            done.append(rec.code)
         return done
 
     # --- users and sessions ---------------------------------------------------------

@@ -44,6 +44,7 @@ def env(tmp_path):
         "nomail": mk("nomail", "Dean Without Email", PW, "dean"),
     }
     store.import_dir(SAMPLES, owner=users["fac"], department="CSE")
+    store.import_programmes(SAMPLES / "programmes")
     mailer = FakeMailer()
     app = create_app(store, mailer=mailer, public_url="https://acaddoc.uni.test/")
 

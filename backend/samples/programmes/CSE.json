@@ -1,0 +1,62 @@
+{
+  "code": "CSE",
+  "name": "B.Tech. Computer Science and Engineering",
+  "department": "CSE",
+  "outcomes": [
+    {
+      "code": "PO1",
+      "title": "Engineering knowledge",
+      "text": "Apply mathematics, science and engineering fundamentals to engineering problems."
+    },
+    {
+      "code": "PO2",
+      "title": "Problem analysis",
+      "text": "Identify, formulate and analyse problems to reach substantiated conclusions."
+    },
+    {
+      "code": "PO3",
+      "title": "Design of solutions",
+      "text": "Design systems, components or processes that meet stated needs."
+    },
+    {
+      "code": "PO4",
+      "title": "Investigation",
+      "text": "Use experiments, data analysis and research methods to reach valid conclusions."
+    },
+    {
+      "code": "PO5",
+      "title": "Modern tools",
+      "text": "Select and use appropriate techniques, software and tools."
+    },
+    {
+      "code": "PO6",
+      "title": "Ethics",
+      "text": "Apply professional ethics and responsibilities in engineering practice."
+    },
+    {
+      "code": "PO7",
+      "title": "Teamwork",
+      "text": "Work effectively as a member or leader of a team."
+    },
+    {
+      "code": "PO8",
+      "title": "Communication",
+      "text": "Communicate effectively in writing and speech."
+    },
+    {
+      "code": "PO9",
+      "title": "Lifelong learning",
+      "text": "Recognise the need for, and engage in, independent learning."
+    },
+    {
+      "code": "PSO1",
+      "title": "Software development",
+      "text": "Develop correct, efficient software using suitable data structures and algorithms."
+    },
+    {
+      "code": "PSO2",
+      "title": "Data and systems",
+      "text": "Design and manage data-intensive and computing systems."
+    }
+  ]
+}

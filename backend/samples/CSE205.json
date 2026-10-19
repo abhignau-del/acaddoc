@@ -37,27 +37,61 @@
   "outcomes": [
     {
       "code": "CO1",
-      "text": "Analyse the time and space complexity of simple algorithms."
+      "text": "Analyse the time and space complexity of simple algorithms.",
+      "bloom": "analyse",
+      "po": {
+        "PO1": 3,
+        "PO2": 3,
+        "PSO1": 2
+      }
     },
     {
       "code": "CO2",
-      "text": "Implement stacks and queues using arrays and linked lists."
+      "text": "Implement stacks and queues using arrays and linked lists.",
+      "bloom": "apply",
+      "po": {
+        "PO1": 2,
+        "PO3": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO3",
-      "text": "Apply linked lists to problems such as polynomial arithmetic."
+      "text": "Apply linked lists to problems such as polynomial arithmetic.",
+      "bloom": "apply",
+      "po": {
+        "PO2": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO4",
-      "text": "Construct binary search trees and balanced trees."
+      "text": "Construct binary search trees and balanced trees.",
+      "bloom": "apply",
+      "po": {
+        "PO3": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO5",
-      "text": "Implement graph traversals and shortest-path algorithms."
+      "text": "Implement graph traversals and shortest-path algorithms.",
+      "bloom": "apply",
+      "po": {
+        "PO2": 2,
+        "PO3": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO6",
-      "text": "Compare hashing techniques and collision-resolution methods."
+      "text": "Compare hashing techniques and collision-resolution methods.",
+      "bloom": "analyse",
+      "po": {
+        "PO2": 3,
+        "PSO1": 2,
+        "PSO2": 2
+      }
     }
   ],
   "modules": [

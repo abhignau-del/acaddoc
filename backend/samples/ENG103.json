@@ -44,27 +44,55 @@
   "outcomes": [
     {
       "code": "CO1",
-      "text": "Demonstrate active listening in academic and professional settings."
+      "text": "Demonstrate active listening in academic and professional settings.",
+      "bloom": "apply",
+      "po": {
+        "PO8": 3,
+        "PO9": 1
+      }
     },
     {
       "code": "CO2",
-      "text": "Explain technical ideas orally with fluency and accuracy."
+      "text": "Explain technical ideas orally with fluency and accuracy.",
+      "bloom": "understand",
+      "po": {
+        "PO8": 3,
+        "PO7": 1
+      }
     },
     {
       "code": "CO3",
-      "text": "Interpret grammatical forms and apply them in context."
+      "text": "Interpret grammatical forms and apply them in context.",
+      "bloom": "understand",
+      "po": {
+        "PO8": 2
+      }
     },
     {
       "code": "CO4",
-      "text": "Apply skimming and scanning to extract information from texts."
+      "text": "Apply skimming and scanning to extract information from texts.",
+      "bloom": "apply",
+      "po": {
+        "PO8": 2,
+        "PO9": 2
+      }
     },
     {
       "code": "CO5",
-      "text": "Develop well-structured paragraphs, letters and emails."
+      "text": "Develop well-structured paragraphs, letters and emails.",
+      "bloom": "create",
+      "po": {
+        "PO8": 3
+      }
     },
     {
       "code": "CO6",
-      "text": "Construct a short technical report in a standard format."
+      "text": "Construct a short technical report in a standard format.",
+      "bloom": "apply",
+      "po": {
+        "PO8": 3,
+        "PO4": 1
+      }
     }
   ],
   "modules": [

@@ -3,6 +3,7 @@
     python -m acaddoc validate  samples
     python -m acaddoc render    samples/MTH101.json --pdf
     python -m acaddoc handbook  samples --programme CSE --year 2026-27 --pdf
+    (validate/render/handbook take --programmes samples/programmes for programme outcomes)
     python -m acaddoc import    samples            # load JSON courses into the database
     python -m acaddoc serve     [--seed]           # web editor at http://127.0.0.1:8000
     python -m acaddoc user add  NAME --role admin --display-name "A. Admin" [--department CSE]
@@ -24,6 +25,18 @@ def load(path: Path) -> list[Course]:
     return [Course.model_validate_json(f.read_text(encoding="utf-8")) for f in files]
 
 
+def frameworks(folder: Path | None):
+    """programme code -> Framework, from a folder of programme JSON files (LOCF when absent)."""
+    from .outcomes import framework
+    from .schema import ProgrammeRecord
+    recs = {}
+    if folder:
+        for f in sorted(Path(folder).glob("*.json")):
+            rec = ProgrammeRecord.model_validate_json(f.read_text(encoding="utf-8"))
+            recs[rec.code] = rec
+    return lambda code: framework(code, recs.get(code)) if folder else None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="acaddoc")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -35,6 +48,8 @@ def main(argv=None) -> int:
     h.add_argument("--programme", required=True); h.add_argument("--year", required=True)
     h.add_argument("--out", type=Path, default=Path("out")); h.add_argument("--pdf", action="store_true")
     h.add_argument("--include-invalid", action="store_true")
+    for sp in (v, r, h):
+        sp.add_argument("--programmes", type=Path, help="folder of programme-outcome JSON files")
     i = sub.add_parser("import"); i.add_argument("path", type=Path)
     i.add_argument("--replace", action="store_true", help="overwrite courses that already exist")
     s = sub.add_parser("serve"); s.add_argument("--port", type=int, default=8000)
@@ -65,7 +80,9 @@ def main(argv=None) -> int:
 
         from .api import app
         if a.seed and not app.state.store.list():
-            app.state.store.import_dir(Path(__file__).resolve().parents[2] / "samples")
+            samples = Path(__file__).resolve().parents[2] / "samples"
+            app.state.store.import_dir(samples)
+            app.state.store.import_programmes(samples / "programmes")
         uvicorn.run(app, host="127.0.0.1", port=a.port)
         return 0
     if a.cmd == "import":
@@ -73,11 +90,17 @@ def main(argv=None) -> int:
         print("imported:", ", ".join(Store().import_dir(a.path, replace=a.replace)) or "nothing new")
         return 0
 
+    from .outcomes import mapping_programme
     courses = load(a.path)
+    fw_of = frameworks(a.programmes)
+
+    def fw(c):
+        return fw_of(mapping_programme(c))
+
     if a.cmd == "validate":
         bad = 0
         for c in courses:
-            issues = validate(c)
+            issues = validate(c, fw(c).outcomes if fw(c) else None)
             print(f"{c.course_code}  {c.course_title}  [{'OK' if not blocking(issues) else 'BLOCKED'}]")
             for i in issues:
                 print("   ", i)
@@ -89,7 +112,7 @@ def main(argv=None) -> int:
         for c in courses:
             dest = a.out / f"{c.course_code}.docx"
             try:
-                render_docx(c, dest, allow_errors=a.force)
+                render_docx(c, dest, allow_errors=a.force, framework=fw(c))
             except InvalidCourse as e:
                 print(e); rc = 1; continue
             print("wrote", dest)
@@ -98,7 +121,8 @@ def main(argv=None) -> int:
         return rc
 
     dest = a.out / f"Handbook_{a.programme.replace(' ', '_')}_{a.year}.docx"
-    res = build_handbook(courses, a.programme, a.year, dest, include_invalid=a.include_invalid)
+    res = build_handbook(courses, a.programme, a.year, dest, include_invalid=a.include_invalid,
+                         framework_for=fw_of if a.programmes else None)
     print(f"wrote {dest}: {len(res.included)} course(s)")
     for code, errs in res.excluded.items():
         print(f"  EXCLUDED {code}:")

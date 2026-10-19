@@ -37,27 +37,59 @@
   "outcomes": [
     {
       "code": "CO1",
-      "text": "Implement stacks and queues using arrays and linked lists."
+      "text": "Implement stacks and queues using arrays and linked lists.",
+      "bloom": "apply",
+      "po": {
+        "PO5": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO2",
-      "text": "Develop programs that use singly and doubly linked lists."
+      "text": "Develop programs that use singly and doubly linked lists.",
+      "bloom": "create",
+      "po": {
+        "PO5": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO3",
-      "text": "Construct binary search trees and perform traversals."
+      "text": "Construct binary search trees and perform traversals.",
+      "bloom": "apply",
+      "po": {
+        "PO3": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO4",
-      "text": "Implement breadth-first and depth-first graph traversals."
+      "text": "Implement breadth-first and depth-first graph traversals.",
+      "bloom": "apply",
+      "po": {
+        "PO3": 2,
+        "PSO1": 3
+      }
     },
     {
       "code": "CO5",
-      "text": "Compare sorting algorithms by measured running time."
+      "text": "Compare sorting algorithms by measured running time.",
+      "bloom": "analyse",
+      "po": {
+        "PO4": 3,
+        "PO5": 2
+      }
     },
     {
       "code": "CO6",
-      "text": "Design a solution to a case study using suitable data structures."
+      "text": "Design a solution to a case study using suitable data structures.",
+      "bloom": "create",
+      "po": {
+        "PO3": 3,
+        "PO7": 1,
+        "PO8": 2,
+        "PSO1": 2
+      }
     }
   ],
   "exercises": [

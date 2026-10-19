@@ -11,8 +11,12 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Cm
 from docxtpl import DocxTemplate, RichText
 
+from .outcomes import BLOOM_LABELS, STRENGTH_LABELS, Framework, columns, strength_mark
 from .schema import Course
 from .validate import Issue, blocking, validate
 
@@ -41,7 +45,54 @@ def _numbered(items: list[str]) -> list[dict]:
     return [{"n": f"{i}.", "text": t} for i, t in enumerate(items, 1)]
 
 
-def context(c: Course) -> dict:
+TEXT_WIDTH_CM = 17.0      # the template's A4 text width; only used to share it between columns
+
+
+def copo_table(tpl: DocxTemplate, c: Course, fw: Framework | None):
+    """The CO-PO matrix as a sub-document, using the template's table and paragraph styles."""
+    cols = columns(c, fw)
+    if not cols or not any(o.po for o in c.outcomes):
+        return None
+    sd = tpl.new_subdoc()
+    t = sd.add_table(rows=1 + len(c.outcomes), cols=1 + len(cols))
+    t.style = "Table Grid"
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    t.autofit = False
+    first = 1.6
+    rest = min(1.4, (TEXT_WIDTH_CM - first) / len(cols))
+    titles = {o.code: o.title for o in fw.outcomes} if fw else {}
+
+    def put(cell, text, strong=False, width=rest):
+        cell.width = Cm(width)
+        p = cell.paragraphs[0]
+        p.style = "AD Cell"
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run(text, style="ADStrong" if strong else None)
+
+    put(t.rows[0].cells[0], "CO", True, first)
+    for j, code in enumerate(cols, 1):
+        put(t.rows[0].cells[j], code, True)
+    for i, o in enumerate(c.outcomes, 1):
+        put(t.rows[i].cells[0], f"CO {i}", True, first)
+        for j, code in enumerate(cols, 1):
+            put(t.rows[i].cells[j], strength_mark(o.po.get(code)))
+    return sd, titles
+
+
+def copo_note(fw: Framework | None) -> str:
+    legend = "3 = " + STRENGTH_LABELS[3] + ", 2 = " + STRENGTH_LABELS[2] + ", 1 = " + STRENGTH_LABELS[1] \
+             + ", - = no correlation."
+    if fw is None:
+        return legend
+    if fw.source == "programme":
+        whose = f"Programme outcomes of {fw.name or fw.programme}"
+    else:
+        whose = (f"UGC LOCF graduate attributes ({fw.programme} has not set its own programme outcomes)"
+                 if fw.programme else "UGC LOCF graduate attributes")
+    return f"{whose}. {legend}"
+
+
+def context(c: Course, tpl: DocxTemplate | None = None, fw: Framework | None = None) -> dict:
     h = c.hours
     offerings = []
     for o in c.offerings:
@@ -83,7 +134,10 @@ def context(c: Course) -> dict:
         "prerequisite": c.prerequisite or "Nil",
         "overview": c.overview,
         "objectives": [{"n": f"{_ROMAN[i]}.", "text": t} for i, t in enumerate(c.objectives)],
-        "outcomes": [{"n": f"CO {i}", "text": o.text} for i, o in enumerate(c.outcomes, 1)],
+        "outcomes": [{"n": f"CO {i}", "text": o.text, "bloom": BLOOM_LABELS.get(o.bloom or "", "")}
+                     for i, o in enumerate(c.outcomes, 1)],
+        "copo": (copo_table(tpl, c, fw) or (None,))[0] if tpl is not None else None,
+        "copo_note": copo_note(fw),
         "modules": modules, "exercises": exercises,
         "text_books": _numbered(c.text_books),
         "reference_books": _numbered(c.reference_books),
@@ -92,13 +146,17 @@ def context(c: Course) -> dict:
     }
 
 
-def render_docx(c: Course, out: Path, *, template: Path = TEMPLATE, allow_errors: bool = False) -> list[Issue]:
-    """Validate, then render. Blocking issues stop generation unless allow_errors."""
-    issues = validate(c)
+def render_docx(c: Course, out: Path, *, template: Path = TEMPLATE, allow_errors: bool = False,
+                framework: Framework | None = None) -> list[Issue]:
+    """Validate, then render. Blocking issues stop generation unless allow_errors.
+
+    `framework`: the programme outcomes the CO-PO mapping is made against (columns and note).
+    """
+    issues = validate(c, framework.outcomes if framework else None)
     if blocking(issues) and not allow_errors:
         raise InvalidCourse(c, blocking(issues))
     tpl = DocxTemplate(str(template))
-    tpl.render(context(c), autoescape=True)
+    tpl.render(context(c, tpl, framework), autoescape=True)
     out.parent.mkdir(parents=True, exist_ok=True)
     tpl.save(str(out))
     return issues

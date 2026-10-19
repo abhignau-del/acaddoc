@@ -25,8 +25,9 @@ from starlette.background import BackgroundTask
 from . import __version__, auth, notify, workflow
 from .auth import User
 from .handbook import build_handbook, semester_of
+from .outcomes import LOCF_OUTCOMES, LOCF_SOURCE, Framework, course_level, framework, mapping_programme, suggest_bloom
 from .render import render_docx
-from .schema import Course
+from .schema import Course, ProgrammeRecord
 from .store import Conflict, NotFound, Record, Store
 from .validate import Issue, blocking, validate
 
@@ -97,8 +98,8 @@ def _meta(r: Record) -> dict:
             "version": m.version, "approved_version": m.approved_version}
 
 
-def _summary(r: Record, u: User) -> dict:
-    issues = validate(r.course)
+def _summary(r: Record, u: User, fw: Framework) -> dict:
+    issues = validate(r.course, fw.outcomes)
     return {"course_code": r.course.course_code, "course_title": r.course.course_title, "kind": r.course.kind,
             "updated_at": r.updated_at, **_meta(r),
             "errors": sum(i.severity == "error" for i in issues),
@@ -107,10 +108,12 @@ def _summary(r: Record, u: User) -> dict:
                            or workflow.why_not(u, "approve", r.meta) is None}
 
 
-def _full(r: Record, u: User) -> dict:
+def _full(r: Record, u: User, fw: Framework) -> dict:
     return {"course": r.course.model_dump(), "updated_at": r.updated_at, **_meta(r),
-            "issues": [_issue(i) for i in validate(r.course)],
-            "can": workflow.permissions(u, r.meta)}
+            "issues": [_issue(i) for i in validate(r.course, fw.outcomes)],
+            "can": workflow.permissions(u, r.meta),
+            "framework": fw.to_dict(),
+            "bloom_suggestions": [suggest_bloom(o.text) for o in r.course.outcomes]}
 
 
 def _tmp_file(suffix: str) -> Path:
@@ -119,9 +122,9 @@ def _tmp_file(suffix: str) -> Path:
     return Path(name)
 
 
-def _docx_response(c: Course, filename: str) -> FileResponse:
+def _docx_response(c: Course, filename: str, fw: Framework | None) -> FileResponse:
     out = _tmp_file(".docx")
-    render_docx(c, out, allow_errors=True)
+    render_docx(c, out, allow_errors=True, framework=fw)
     return FileResponse(out, media_type=DOCX, filename=filename, background=BackgroundTask(out.unlink))
 
 
@@ -171,6 +174,20 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
             return st().get(code)
         except NotFound:
             raise HTTPException(404, f"No course {code}")
+
+    def fw_of(programme: str) -> Framework:
+        """A programme's outcomes: its own record, else the UGC LOCF graduate attributes."""
+        return framework(programme, st().programme_record(programme) if programme else None)
+
+    def fw_course(c: Course) -> Framework:
+        return fw_of(mapping_programme(c))
+
+    def can_edit_programme(u: User, existing: ProgrammeRecord | None) -> bool:
+        if u.disabled:
+            return False
+        if u.is_admin:
+            return True
+        return u.role == "hod" and bool(u.department) and (existing is None or existing.department == u.department)
 
     def require(u: User, action: str, r: Record) -> None:
         reason = workflow.why_not(u, action, r.meta)
@@ -276,16 +293,24 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
 
     @app.get("/api/courses")
     def list_courses(u: User = Depends(current_user)):
-        return [_summary(r, u) for r in st().list()]
+        cache: dict[str, Framework] = {}
+        out = []
+        for r in st().list():
+            code = mapping_programme(r.course)
+            if code not in cache:
+                cache[code] = fw_of(code)
+            out.append(_summary(r, u, cache[code]))
+        return out
 
     @app.get("/api/courses/{code}")
     def get_course(code: str, u: User = Depends(current_user)):
-        return _full(record(code), u)
+        r = record(code)
+        return _full(r, u, fw_course(r.course))
 
     @app.post("/api/courses", status_code=201)
     def create_course(c: Course, u: User = Depends(current_user)):
         try:
-            return _full(st().create(c, owner=u), u)
+            return _full(st().create(c, owner=u), u, fw_course(c))
         except Conflict as e:
             raise HTTPException(409, str(e))
 
@@ -293,7 +318,7 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
     def update_course(code: str, c: Course, u: User = Depends(current_user)):
         require(u, "edit", record(code))
         try:
-            return _full(st().update(code, c, by=u), u)
+            return _full(st().update(code, c, by=u), u, fw_course(c))
         except Conflict as e:
             raise HTTPException(409, str(e))
 
@@ -301,7 +326,8 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
     def update_meta(code: str, body: MetaPatch, u: User = Depends(admin_user)):
         record(code)
         try:
-            return _full(st().set_meta(code, department=body.department, owner_id=body.owner_id, by=u), u)
+            r = st().set_meta(code, department=body.department, owner_id=body.owner_id, by=u)
+            return _full(r, u, fw_course(r.course))
         except NotFound:
             raise HTTPException(404, "No such user")
 
@@ -321,7 +347,7 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
         if action in workflow.NEEDS_COMMENT and not comment:
             raise HTTPException(400, "Say what needs to change")
         if action == "submit":
-            errs = blocking(validate(r.course))
+            errs = blocking(validate(r.course, fw_course(r.course).outcomes))
             if errs:
                 return JSONResponse({"detail": "Fix the errors before submitting",
                                      "issues": [_issue(i) for i in errs]}, status_code=422)
@@ -333,7 +359,7 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
         ids = notify.queue(st(), app.state.mailer, action, r, u, comment, app.state.public_url)
         if ids:   # sent after the response, so mail problems never hold up the workflow
             background.add_task(notify.deliver, st(), app.state.mailer, ids)
-        return _full(r, u)
+        return _full(r, u, fw_course(r.course))
 
     @app.get("/api/courses/{code}/history")
     def history(code: str, _: User = Depends(current_user)):
@@ -348,16 +374,19 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
         except ValidationError as e:
             return {"structure": [{"where": ".".join(map(str, err["loc"])), "message": err["msg"]}
                                   for err in e.errors()], "issues": []}
-        return {"structure": [], "issues": [_issue(i) for i in validate(c)]}
+        fw = fw_course(c)
+        return {"structure": [], "issues": [_issue(i) for i in validate(c, fw.outcomes)],
+                "framework": fw.to_dict(), "bloom_suggestions": [suggest_bloom(o.text) for o in c.outcomes]}
 
     @app.get("/api/courses/{code}/docx")
     def course_docx(code: str, force: bool = False, _: User = Depends(current_user)):
         r = record(code)
-        errs = blocking(validate(r.course))
+        fw = fw_course(r.course)
+        errs = blocking(validate(r.course, fw.outcomes))
         if errs and not force:
             return JSONResponse({"detail": "Course has blocking errors", "issues": [_issue(i) for i in errs]},
                                 status_code=422)
-        return _docx_response(r.course, f"{code}.docx")
+        return _docx_response(r.course, f"{code}.docx", fw)
 
     @app.get("/api/courses/{code}/versions/{n}/docx")
     def version_docx(code: str, n: int, _: User = Depends(current_user)):
@@ -365,7 +394,7 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
             c = st().version(code, n)
         except NotFound:
             raise HTTPException(404, f"No version {n} of {code}")
-        return _docx_response(c, f"{code}_v{n}.docx")
+        return _docx_response(c, f"{code}_v{n}.docx", fw_course(c))
 
     # --- email (admin) -----------------------------------------------------------------------
 
@@ -403,6 +432,64 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
     def programmes(_: User = Depends(current_user)):
         return sorted({p for r in st().list() for o in r.course.offerings for p in o.programmes})
 
+    # --- programme outcomes ---------------------------------------------------------------
+
+    @app.get("/api/frameworks/locf")
+    def locf(_: User = Depends(current_user)):
+        return {"source_label": LOCF_SOURCE, "outcomes": [o.model_dump() for o in LOCF_OUTCOMES]}
+
+    @app.get("/api/programme-outcomes")
+    def list_programme_outcomes(u: User = Depends(current_user)):
+        records = {rec.code: (rec, at, by) for rec, at, by in st().programme_records()}
+        courses = st().list()
+        offered = {p for r in courses for o in r.course.offerings for p in o.programmes}
+        mapped: dict[str, int] = {}
+        for r in courses:
+            code = mapping_programme(r.course)
+            mapped[code] = mapped.get(code, 0) + 1
+        out = []
+        for code in sorted(offered | set(records)):
+            rec, at, by = records.get(code, (None, "", ""))
+            out.append({"code": code, "name": rec.name if rec else "", "department": rec.department if rec else "",
+                        "own": bool(rec and rec.outcomes), "outcomes": len(rec.outcomes) if rec else 0,
+                        "updated_at": at, "updated_by": by, "courses": mapped.get(code, 0),
+                        "can_edit": can_edit_programme(u, rec)})
+        return out
+
+    @app.get("/api/programme-outcomes/{code}")
+    def get_programme_outcomes(code: str, u: User = Depends(current_user)):
+        rec = st().programme_record(code)
+        fw = fw_of(code)
+        rows = []
+        for r in st().list():
+            if mapping_programme(r.course) != code:
+                continue
+            c = r.course
+            rows.append({"course_code": c.course_code, "course_title": c.course_title,
+                         "status_label": workflow.LABELS[r.meta.status],
+                         "mapped": any(o.po for o in c.outcomes),
+                         "levels": {pc: course_level(c, pc) for pc in fw.codes if course_level(c, pc)}})
+        gaps = [pc for pc in fw.codes if not any(pc in row["levels"] for row in rows)]
+        return {"code": code, "record": rec.model_dump() if rec else None, "framework": fw.to_dict(),
+                "can_edit": can_edit_programme(u, rec), "courses": rows, "gaps": gaps}
+
+    @app.put("/api/programme-outcomes/{code}")
+    def save_programme_outcomes(code: str, body: ProgrammeRecord, u: User = Depends(current_user)):
+        existing = st().programme_record(code)
+        if body.code != code:
+            raise HTTPException(400, "The programme code cannot be changed here")
+        if not can_edit_programme(u, existing):
+            raise HTTPException(403, "Only an administrator or the HOD of the programme's department can edit "
+                                     "its outcomes")
+        if not u.is_admin and body.department != u.department:
+            raise HTTPException(403, f"As HOD you can keep this programme in {u.department} only")
+        codes = [o.code for o in body.outcomes]
+        dup = sorted({c for c in codes if codes.count(c) > 1})
+        if dup:
+            raise HTTPException(400, f"Outcome codes must be unique: {', '.join(dup)}")
+        st().save_programme(body, by=u)
+        return get_programme_outcomes(code, u)
+
     @app.get("/api/handbook")
     def handbook(programme: str, year: str = Query(..., min_length=4), include_unapproved: bool = False,
                  _: User = Depends(current_user)):
@@ -421,7 +508,7 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
             raise HTTPException(404, f"No approved courses for programme {programme}" if unapproved
                                 else f"No courses for programme {programme}")
         out = _tmp_file(".docx")
-        res = build_handbook(chosen, programme, year, out, include_invalid=include_unapproved)
+        res = build_handbook(chosen, programme, year, out, include_invalid=include_unapproved, framework_for=fw_of)
         return FileResponse(out, media_type=DOCX, filename=f"Handbook_{programme}_{year}.docx",
                             headers={"X-Excluded-Courses": ",".join(res.excluded),
                                      "X-Unapproved-Courses": ",".join(unapproved),

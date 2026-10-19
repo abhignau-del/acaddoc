@@ -15,6 +15,13 @@ come out looking identical because no one formats them by hand.
 - **Live checks** while typing: errors that block the document (marks don't add up,
   module hours ≠ contact classes, wrong number of outcomes, empty overview …) and
   warnings (two action verbs in one outcome, missing e-resources …).
+- **Bloom levels and CO–PO mapping.** Each course outcome has a Bloom level (a suggestion is
+  read from its opening verb; faculty decide). Faculty map every outcome to the programme
+  outcomes on a 1–3 grid; the syllabus prints the level after each outcome and the CO–PO
+  table with its legend.
+- **Programme outcomes** (POs and PSOs) are kept per programme by an administrator or the
+  programme's HOD. A programme without its own starts from the UGC LOCF graduate attributes.
+  The handbook lists them and adds a course × PO matrix that names outcomes no course serves.
 - **Drafts survive** a closed tab or a crash: unsaved work is kept in the browser and
   offered back when the course is reopened.
 - **DOCX per course**, through a Word template (`backend/templates/course_content.docx`).
@@ -87,9 +94,9 @@ For frontend development, run `python -m acaddoc serve` and, in `frontend/`,
 ### Command line
 
 ```
-python -m acaddoc validate backend/samples
-python -m acaddoc render   backend/samples --out out           # add --pdf for PDFs
-python -m acaddoc handbook backend/samples --programme CSE --year 2026-27 --out out
+python -m acaddoc validate backend/samples --programmes backend/samples/programmes
+python -m acaddoc render   backend/samples --programmes backend/samples/programmes --out out   # add --pdf
+python -m acaddoc handbook backend/samples --programmes backend/samples/programmes --programme CSE --year 2026-27 --out out
 python -m acaddoc import   backend/samples                      # JSON files into the database
 ```
 
@@ -111,8 +118,9 @@ python backend/tools/make_template.py --banner letterhead.png --out my_template.
 set ACADDOC_TEMPLATE=C:\path\to\my_template.docx
 ```
 
-Rules (number of modules, outcomes, objectives, course-code pattern) are in
-`RULES` at the top of `backend/src/acaddoc/validate.py`.
+Rules (number of modules, outcomes, objectives, course-code pattern, whether every
+course outcome must be mapped before submission) are in `RULES` at the top of
+`backend/src/acaddoc/validate.py`.
 
 ## Layout
 
@@ -122,12 +130,13 @@ Rules (number of modules, outcomes, objectives, course-code pattern) are in
 | `backend/src/acaddoc/validate.py` | Institutional rules. |
 | `backend/src/acaddoc/render.py` | Course → DOCX through the template. Decides the text, never the look. |
 | `backend/src/acaddoc/handbook.py` | Programme handbook. |
+| `backend/src/acaddoc/outcomes.py` | Bloom levels, CO–PO arithmetic, programme outcomes and the UGC LOCF default. |
 | `backend/src/acaddoc/workflow.py` | Who may do what, in which state. |
 | `backend/src/acaddoc/auth.py` | Password hashing (scrypt), sign-in tokens, login throttling. |
 | `backend/src/acaddoc/notify.py` | Who is emailed about what; SMTP sending. |
 | `backend/src/acaddoc/store.py` | SQLite: courses, frozen versions, audit trail, users, sessions. |
 | `backend/src/acaddoc/api.py` | FastAPI app; also serves the built editor. |
-| `backend/samples/` | Fictional sample courses (`tools/make_samples.py`). |
+| `backend/samples/` | Fictional sample courses and programme outcomes (`tools/make_samples.py`). |
 | `frontend/src/` | React + TypeScript editor. `courseops.ts` holds the tested logic. |
 
 ## Data policy

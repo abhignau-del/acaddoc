@@ -5,9 +5,9 @@ about fonts, margins or Word; that belongs to the template.
 """
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 
 class _Model(BaseModel):
@@ -66,9 +66,20 @@ class Exercise(_Model):
     items: list[ExerciseItem]
 
 
+BloomLevel = Literal["remember", "understand", "apply", "analyse", "evaluate", "create"]
+BLOOM_LEVELS: tuple[str, ...] = BloomLevel.__args__
+
+# A programme outcome code: PO1, PSO2, GA3 ...
+OutcomeCode = Annotated[str, StringConstraints(pattern=r"^[A-Z]{1,5}\d{1,2}$")]
+# How strongly a course outcome serves a programme outcome: 1 low, 2 moderate, 3 high (absent = none).
+Strength = Annotated[int, Field(ge=1, le=3)]
+
+
 class Outcome(_Model):
     code: str          # "CO1" (the template prints it as "CO 1")
     text: str
+    bloom: Optional[BloomLevel] = None
+    po: dict[OutcomeCode, Strength] = Field(default_factory=dict)   # CO-PO mapping row
 
 
 class Course(_Model):
@@ -85,6 +96,8 @@ class Course(_Model):
     overview: str
     objectives: list[str]
     outcomes: list[Outcome]
+    # whose programme outcomes the CO-PO mapping uses; blank = the first programme offered
+    po_programme: str = ""
 
     modules: list[Module] = Field(default_factory=list)       # theory
     exercises: list[Exercise] = Field(default_factory=list)   # laboratory
@@ -93,3 +106,17 @@ class Course(_Model):
     reference_books: list[str] = Field(default_factory=list)
     electronic_resources: list[str] = Field(default_factory=list)
     materials_online: list[str] = Field(default_factory=list)
+
+
+class ProgrammeOutcome(_Model):
+    code: OutcomeCode
+    title: str = ""            # short name, e.g. "Problem analysis"
+    text: str = Field(min_length=1)
+
+
+class ProgrammeRecord(_Model):
+    """A programme's own outcomes (POs and PSOs). Maintained by an admin or the HOD."""
+    code: str = Field(min_length=1, max_length=40)     # as written in course offerings, e.g. "CSE"
+    name: str = ""                                     # e.g. "B.Tech. Computer Science and Engineering"
+    department: str = ""
+    outcomes: list[ProgrammeOutcome] = Field(default_factory=list)

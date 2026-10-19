@@ -1,5 +1,7 @@
 // Pure helpers for the editor: no React, no network. Tested in courseops.test.ts.
-import type { Action, Course, CourseSummary, Issue, Kind, Outcome, Role, StructureProblem, User } from "./types";
+import type {
+  Action, BloomLevel, Course, CourseSummary, Framework, Issue, Kind, Outcome, ProgrammeOutcome, Role, StructureProblem, User,
+} from "./types";
 
 export const SEMESTERS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
 
@@ -15,7 +17,8 @@ export function emptyCourse(kind: Kind): Course {
     marks: { cia: 40, see: 60, total: 100 },
     prerequisite: "", overview: "",
     objectives: ["", "", "", ""],
-    outcomes: renumber(Array.from({ length: 6 }, () => ({ code: "", text: "" }))),
+    outcomes: renumber(Array.from({ length: 6 }, () => ({ code: "", text: "", bloom: null, po: {} }))),
+    po_programme: "",
     modules: lab ? [] : Array.from({ length: 5 }, () => ({ title: "", hours: null, parts: [{ text: "" }] })),
     exercises: lab ? [{ title: "", items: [{ text: "", subitems: [] }] }] : [],
     text_books: [""], reference_books: [], electronic_resources: [], materials_online: [],
@@ -55,6 +58,7 @@ export function sectionOf(where: string): string {
   if (head === "course_code" || head === "course_title" || head === "category" || head === "kind" ||
       head === "prerequisite" || head === "offerings") return "basics";
   if (head === "references") return "books";
+  if (head === "copo" || head === "po_programme") return "copo";
   if (["text_books", "reference_books", "electronic_resources", "materials_online"].includes(head)) return "books";
   return head;
 }
@@ -156,4 +160,50 @@ export function courseFromHash(hash: string): string | null {
   const m = /^#course=([^&]+)$/.exec(hash);
   if (!m) return null;
   try { return decodeURIComponent(m[1]); } catch { return null; }
+}
+
+// --- course outcomes against programme outcomes ---------------------------------------
+
+export const BLOOM: { id: BloomLevel; label: string }[] = [
+  { id: "remember", label: "Remember" }, { id: "understand", label: "Understand" }, { id: "apply", label: "Apply" },
+  { id: "analyse", label: "Analyse" }, { id: "evaluate", label: "Evaluate" }, { id: "create", label: "Create" },
+];
+export const STRENGTH_LABELS: Record<number, string> = { 1: "Low", 2: "Moderate", 3: "High" };
+
+/** One click on a matrix cell: none -> 1 -> 2 -> 3 -> none. */
+export function cycleStrength(v: number | undefined): number | undefined {
+  return v === undefined ? 1 : v >= 3 ? undefined : v + 1;
+}
+
+/** Set one cell of an outcome's CO-PO row (undefined clears it). */
+export function setLink(o: Outcome, code: string, v: number | undefined): Outcome {
+  const po = { ...o.po };
+  if (v === undefined) delete po[code]; else po[code] = v;
+  return { ...o, po };
+}
+
+function codeKey(code: string): [string, number] {
+  const m = /^([A-Z]+)(\d+)$/.exec(code);
+  return m ? [m[1], Number(m[2])] : [code, 0];
+}
+
+/** Matrix columns: the framework's outcomes in order, then any other code the course still uses (as the server). */
+export function copoColumns(c: Course, fw: Framework | null): string[] {
+  const base = fw ? fw.outcomes.map((o) => o.code) : [];
+  const extra = [...new Set(c.outcomes.flatMap((o) => Object.keys(o.po ?? {})))].filter((x) => !base.includes(x));
+  extra.sort((a, b) => { const [pa, na] = codeKey(a); const [pb, nb] = codeKey(b); return pa < pb ? -1 : pa > pb ? 1 : na - nb; });
+  return [...base, ...extra];
+}
+
+/** Whose outcomes the course is mapped to: po_programme, else the first programme offered (as the server). */
+export function mappingProgramme(c: Course): string {
+  if (c.po_programme) return c.po_programme;
+  for (const o of c.offerings) if (o.programmes.length) return o.programmes[0];
+  return "";
+}
+
+/** The next free code with this prefix: PO1..PO9 -> PO10; PSO1 -> PSO2. */
+export function nextOutcomeCode(outcomes: ProgrammeOutcome[], prefix: string): string {
+  const used = outcomes.map((o) => new RegExp(`^${prefix}(\\d+)$`).exec(o.code)).filter(Boolean).map((m) => Number(m![1]));
+  return `${prefix}${used.length ? Math.max(...used) + 1 : 1}`;
 }

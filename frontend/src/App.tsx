@@ -7,8 +7,9 @@ import {
 } from "./courseops";
 import { Editor, SECTIONS } from "./Editor";
 import { AccountDialog, MailDialog, Modal, UsersDialog } from "./people";
+import { ProgrammesDialog } from "./programmes";
 import type {
-  Action, Course, CourseFull, CourseSummary, HistoryEvent, Issue, Kind, StructureProblem, User, VersionInfo,
+  Action, BloomLevel, Course, Framework, CourseFull, CourseSummary, HistoryEvent, Issue, Kind, StructureProblem, User, VersionInfo,
 } from "./types";
 
 /** What is open in the editor. `code` is the saved code (null = not saved yet); `full` is the server's view. */
@@ -25,7 +26,10 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [dialog, setDialog] = useState<null | "users" | "account" | "mail">(null);
+  const [dialog, setDialog] = useState<null | "users" | "account" | "mail" | "programmes">(null);
+  const [framework, setFramework] = useState<Framework | null>(null);
+  // Bloom suggestions by outcome text (the server sees the tidied course, so indexes can differ)
+  const [hints, setHints] = useState<Map<string, BloomLevel | null>>(new Map());
   const [asking, setAsking] = useState<Action | null>(null);
   const [historyTick, setHistoryTick] = useState(0);
 
@@ -58,8 +62,13 @@ export default function App() {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       if (dirty) saveDraft(open.code, open.course);
-      api.validate(tidy(open.course))
-        .then((r) => { setIssues(r.issues); setStructure(r.structure); })
+      const sent = tidy(open.course);
+      api.validate(sent)
+        .then((r) => {
+          setIssues(r.issues); setStructure(r.structure);
+          if (r.framework) setFramework(r.framework);
+          if (r.bloom_suggestions) setHints(hintMap(sent.outcomes, r.bloom_suggestions));
+        })
         .catch(() => { /* the save will report it */ });
     }, 350);
     return () => window.clearTimeout(timer.current);
@@ -72,6 +81,7 @@ export default function App() {
   function show(full: CourseFull) {
     setOpen({ code: full.course.course_code, full, course: full.course });
     setIssues(full.issues); setStructure([]);
+    setFramework(full.framework); setHints(hintMap(full.course.outcomes, full.bloom_suggestions));
     setHistoryTick((t) => t + 1);
   }
 
@@ -159,6 +169,7 @@ export default function App() {
         <span className="who">{user.display_name} · {ROLE_LABELS[user.role]}{user.department ? ` · ${user.department}` : ""}</span>
         {user.role === "admin" && <button className="btn on-accent" onClick={() => setDialog("users")}>Users</button>}
         {user.role === "admin" && <button className="btn on-accent" onClick={() => setDialog("mail")}>Email</button>}
+        <button className="btn on-accent" onClick={() => setDialog("programmes")}>Programme outcomes</button>
         <button className="btn on-accent" onClick={() => setDialog("account")}>Account</button>
         <button className="btn on-accent" onClick={() => { if (confirmLeave()) signOut(); }}>Sign out</button>
       </header>
@@ -247,7 +258,8 @@ export default function App() {
 
           <div className="workspace">
             <fieldset className="plain" disabled={!editable}>
-              <Editor course={open.course} counts={editable ? counts : {}} onChange={(course) => setOpen({ ...open, course })} />
+              <Editor course={open.course} counts={editable ? counts : {}} onChange={(course) => setOpen({ ...open, course })}
+                framework={framework} suggestions={open.course.outcomes.map((o) => hints.get(o.text.trim()) ?? null)} />
             </fieldset>
             <div className="side">
               {editable && <Checks issues={issues} structure={structure} />}
@@ -264,6 +276,7 @@ export default function App() {
       {dialog === "users" && <UsersDialog me={user} onClose={() => { setDialog(null); refresh(); }} />}
       {dialog === "account" && <AccountDialog onClose={() => setDialog(null)} />}
       {dialog === "mail" && <MailDialog me={user} onClose={() => setDialog(null)} />}
+      {dialog === "programmes" && <ProgrammesDialog onClose={() => { setDialog(null); refresh(); if (open?.code) api.get(open.code).then((f) => setFramework(f.framework)).catch(() => {}); }} />}
     </div>
   );
 }
@@ -414,4 +427,8 @@ function Handbook({ onError }: { onError: (m: string | null) => void }) {
       {result && <p className="muted">{result}</p>}
     </div>
   );
+}
+
+function hintMap(outcomes: { text: string }[], hints: (BloomLevel | null)[]): Map<string, BloomLevel | null> {
+  return new Map(outcomes.map((o, i) => [o.text.trim(), hints[i] ?? null]));
 }

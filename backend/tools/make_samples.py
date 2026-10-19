@@ -8,7 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from acaddoc.schema import Course  # noqa: E402
+from acaddoc.outcomes import framework, mapping_programme, suggest_bloom  # noqa: E402
+from acaddoc.schema import Course, ProgrammeRecord  # noqa: E402
 from acaddoc.validate import validate  # noqa: E402
 
 MAT = ["Course template", "Tutorial question bank", "Definitions and terminology", "Assignments",
@@ -202,12 +203,67 @@ COURSES = [
     },
 ]
 
+# Fictional programme outcomes (own wording). ME has none, so its courses fall back to UGC LOCF.
+_COMMON_POS = [
+    ("PO1", "Engineering knowledge", "Apply mathematics, science and engineering fundamentals to engineering problems."),
+    ("PO2", "Problem analysis", "Identify, formulate and analyse problems to reach substantiated conclusions."),
+    ("PO3", "Design of solutions", "Design systems, components or processes that meet stated needs."),
+    ("PO4", "Investigation", "Use experiments, data analysis and research methods to reach valid conclusions."),
+    ("PO5", "Modern tools", "Select and use appropriate techniques, software and tools."),
+    ("PO6", "Ethics", "Apply professional ethics and responsibilities in engineering practice."),
+    ("PO7", "Teamwork", "Work effectively as a member or leader of a team."),
+    ("PO8", "Communication", "Communicate effectively in writing and speech."),
+    ("PO9", "Lifelong learning", "Recognise the need for, and engage in, independent learning."),
+]
+
+
+def _programme(code, name, dept, psos):
+    outs = [{"code": c, "title": t, "text": x} for c, t, x in _COMMON_POS + psos]
+    return {"code": code, "name": name, "department": dept, "outcomes": outs}
+
+
+PROGRAMMES = [
+    _programme("CSE", "B.Tech. Computer Science and Engineering", "CSE", [
+        ("PSO1", "Software development", "Develop correct, efficient software using suitable data structures and algorithms."),
+        ("PSO2", "Data and systems", "Design and manage data-intensive and computing systems."),
+    ]),
+    _programme("ECE", "B.Tech. Electronics and Communication Engineering", "ECE", [
+        ("PSO1", "Electronic systems", "Analyse and design analogue and digital electronic systems."),
+        ("PSO2", "Communication systems", "Design and evaluate communication and signal-processing systems."),
+    ]),
+]
+
+# CO-PO mapping per course, CO1 first (3 high, 2 moderate, 1 low).
+MAPS = {
+    "MTH101": [{"PO1": 3, "PO2": 2}, {"PO1": 3, "PO2": 2}, {"PO1": 3, "PO2": 1},
+               {"PO1": 3, "PO2": 2}, {"PO1": 3, "PO2": 2, "PO3": 1}, {"PO1": 3, "PO2": 2}],
+    "ENG103": [{"PO8": 3, "PO9": 1}, {"PO8": 3, "PO7": 1}, {"PO8": 2},
+               {"PO8": 2, "PO9": 2}, {"PO8": 3}, {"PO8": 3, "PO4": 1}],
+    "CSE205": [{"PO1": 3, "PO2": 3, "PSO1": 2}, {"PO1": 2, "PO3": 2, "PSO1": 3}, {"PO2": 2, "PSO1": 3},
+               {"PO3": 2, "PSO1": 3}, {"PO2": 2, "PO3": 2, "PSO1": 3}, {"PO2": 3, "PSO1": 2, "PSO2": 2}],
+    "CSE206": [{"PO5": 2, "PSO1": 3}, {"PO5": 2, "PSO1": 3}, {"PO3": 2, "PSO1": 3},
+               {"PO3": 2, "PSO1": 3}, {"PO4": 3, "PO5": 2}, {"PO3": 3, "PO7": 1, "PO8": 2, "PSO1": 2}],
+}
+for _d in COURSES:
+    for _o, _m in zip(_d["outcomes"], MAPS[_d["course_code"]]):
+        _o["bloom"] = suggest_bloom(_o["text"])
+        _o["po"] = _m
+
+
 if __name__ == "__main__":
     out = ROOT / "samples"
     out.mkdir(exist_ok=True)
+    progs = {}
+    (out / "programmes").mkdir(exist_ok=True)
+    for pd in PROGRAMMES:
+        rec = ProgrammeRecord.model_validate(pd)
+        progs[rec.code] = rec
+        (out / "programmes" / f"{rec.code}.json").write_text(json.dumps(pd, indent=2, ensure_ascii=False) + "\n",
+                                                            encoding="utf-8")
     for d in COURSES:
         c = Course.model_validate(d)
-        issues = validate(c)
+        code = mapping_programme(c)
+        issues = validate(c, framework(code, progs.get(code)).outcomes)
         print(c.course_code, [str(i) for i in issues] or "OK")
         (out / f"{c.course_code}.json").write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n",
                                                    encoding="utf-8")

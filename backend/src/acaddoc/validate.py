@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from .schema import Course
+from .schema import Course, ProgrammeOutcome
 
 # Institutional parameters. Change these, not the checks.
 RULES = {
@@ -17,6 +17,8 @@ RULES = {
     "theory_modules": 5,
     "outcomes": 6,
     "objectives": 4,
+    # True: every course outcome must be mapped to a programme outcome before submission.
+    "copo_required": False,
 }
 
 # Bloom action verbs; two of them in one outcome usually means an edit left
@@ -40,7 +42,8 @@ class Issue:
         return f"{self.severity.upper():7} {self.rule:22} {self.where}: {self.message}"
 
 
-def validate(c: Course) -> list[Issue]:
+def validate(c: Course, framework: list[ProgrammeOutcome] | None = None) -> list[Issue]:
+    """Check a course. `framework`: the programme outcomes it is mapped against, when known."""
     out: list[Issue] = []
 
     def err(rule, where, msg):
@@ -84,6 +87,25 @@ def validate(c: Course) -> list[Issue]:
                  if w[0].isupper() and w.lower() in _VERBS and not (prev.lower() == "make" and w.lower() == "use")]
         if extra:
             warn("OUTCOME_TWO_VERBS", f"outcomes[{i}]", f"capitalised verb(s) {extra} mid-sentence; leftover edit?")
+
+    # Bloom levels and CO-PO mapping
+    no_bloom = [o.code for o in c.outcomes if not o.bloom]
+    if no_bloom and c.outcomes:
+        warn("OUTCOME_BLOOM_MISSING", "outcomes", f"no Bloom level for {', '.join(no_bloom)}")
+    copo = err if RULES["copo_required"] else warn
+    mapped = [o for o in c.outcomes if o.po]
+    if c.outcomes and not mapped:
+        copo("COPO_EMPTY", "copo", "the course outcomes are not mapped to programme outcomes yet")
+    elif len(mapped) < len(c.outcomes):
+        copo("CO_UNMAPPED", "copo",
+             f"{', '.join(o.code for o in c.outcomes if not o.po)} not mapped to any programme outcome")
+    if framework is not None:
+        known = {p.code for p in framework}
+        for i, o in enumerate(c.outcomes, 1):
+            unknown = sorted(set(o.po) - known)
+            if unknown:
+                err("PO_UNKNOWN", f"copo.{o.code}",
+                    f"{o.code} is mapped to {', '.join(unknown)}, which the programme does not have")
 
     if c.kind == "theory":
         if c.exercises:

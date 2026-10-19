@@ -1,8 +1,11 @@
 // The course form. Every edit produces a new Course via onChange; nothing is saved here.
 import type { ReactNode } from "react";
-import { parseProgrammes, renumber, replaceAt, SEMESTERS } from "./courseops";
+import {
+  BLOOM, copoColumns, cycleStrength, mappingProgramme, parseProgrammes, renumber, replaceAt, SEMESTERS, setLink,
+  STRENGTH_LABELS,
+} from "./courseops";
 import { Area, Num, RowTools, Section, StringList, Text } from "./fields";
-import type { Course, Exercise, ExerciseItem, Hours, Module, Table } from "./types";
+import type { BloomLevel, Course, Exercise, ExerciseItem, Framework, Hours, Module, Outcome, Table } from "./types";
 
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
 const arabic = (i: number) => `${i + 1}.`;
@@ -10,11 +13,12 @@ const letter = (i: number) => `${String.fromCharCode(97 + i)}.`;
 
 export const SECTIONS: [string, string][] = [
   ["basics", "Course"], ["hours", "Hours & marks"], ["overview", "Overview"], ["objectives", "Objectives"],
-  ["outcomes", "Outcomes"], ["content", "Content"], ["books", "Books & resources"],
+  ["outcomes", "Outcomes"], ["copo", "CO–PO mapping"], ["content", "Content"], ["books", "Books & resources"],
 ];
 
-export function Editor({ course: c, onChange, counts }: {
+export function Editor({ course: c, onChange, counts, framework, suggestions }: {
   course: Course; onChange: (c: Course) => void; counts: Record<string, number>;
+  framework: Framework | null; suggestions: (BloomLevel | null)[];
 }) {
   const set = <K extends keyof Course>(k: K, v: Course[K]) => onChange({ ...c, [k]: v });
   const setHours = (k: keyof Hours, v: number | null) => set("hours", { ...c.hours, [k]: v ?? 0 });
@@ -85,10 +89,12 @@ export function Editor({ course: c, onChange, counts }: {
       </Section>
 
       <Section id="outcomes" title="III. Course outcomes" count={counts.outcomes}>
-        <p className="hint">Start each outcome with one measurable action verb. Numbering is automatic.</p>
-        <StringList items={c.outcomes.map((o) => o.text)}
-          onChange={(l) => set("outcomes", renumber(l.map((text) => ({ code: "", text }))))}
-          mark={(i) => `CO ${i + 1}`} placeholder="e.g. Determine the rank of a matrix …" what="outcome" rows={2} />
+        <p className="hint">Start each outcome with one measurable action verb, and give its Bloom level. Numbering is automatic.</p>
+        <Outcomes list={c.outcomes} suggestions={suggestions} onChange={(l) => set("outcomes", renumber(l))} />
+      </Section>
+
+      <Section id="copo" title="CO–PO mapping" count={counts.copo}>
+        <CopoMatrix course={c} framework={framework} onChange={onChange} />
       </Section>
 
       <Section id="content" title={lab ? "IV. Exercises" : "IV. Modules"}
@@ -246,5 +252,108 @@ function TableEditor({ table, onChange }: { table: Table | null; onChange: (t: T
         <button type="button" className="add danger" onClick={() => onChange(null)}>Remove table</button>
       </div>
     </div>
+  );
+}
+
+/** Course outcomes with their Bloom levels. Rows keep their mapping when moved. */
+function Outcomes({ list, suggestions, onChange }: {
+  list: Outcome[]; suggestions: (BloomLevel | null)[]; onChange: (l: Outcome[]) => void;
+}) {
+  return (
+    <div className="list">
+      {list.map((o, i) => {
+        const hint = suggestions[i];
+        const setO = (patch: Partial<Outcome>) => onChange(replaceAt(list, i, { ...o, ...patch }));
+        return (
+          <div className="list-row" key={i}>
+            <span className="mark">CO {i + 1}</span>
+            <Area rows={2} label={`outcome CO ${i + 1}`} value={o.text} placeholder="e.g. Determine the rank of a matrix …"
+              onChange={(v) => setO({ text: v })} />
+            <div className="bloom">
+              <select aria-label={`Bloom level of CO ${i + 1}`} value={o.bloom ?? ""}
+                onChange={(e) => setO({ bloom: (e.target.value || null) as BloomLevel | null })}>
+                <option value="">Bloom level…</option>
+                {BLOOM.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+              </select>
+              {hint && hint !== o.bloom &&
+                <button type="button" className="linkish" title="Read from the opening verb"
+                  onClick={() => setO({ bloom: hint })}>
+                  use {BLOOM.find((b) => b.id === hint)?.label}</button>}
+            </div>
+            <RowTools list={list} i={i} set={onChange} what="outcome" />
+          </div>
+        );
+      })}
+      <button type="button" className="add" onClick={() => onChange([...list, { code: "", text: "", bloom: null, po: {} }])}>
+        + Add outcome</button>
+    </div>
+  );
+}
+
+/** The CO-PO grid. A click cycles a cell: – → 1 → 2 → 3 → –. */
+function CopoMatrix({ course: c, framework: fw, onChange }: {
+  course: Course; framework: Framework | null; onChange: (c: Course) => void;
+}) {
+  const offered = [...new Set(c.offerings.flatMap((o) => o.programmes))];
+  const target = mappingProgramme(c);
+  const cols = copoColumns(c, fw);
+  const known = new Set(fw?.outcomes.map((o) => o.code) ?? []);
+  const titles = Object.fromEntries((fw?.outcomes ?? []).map((o) => [o.code, `${o.code}${o.title ? ` – ${o.title}` : ""}: ${o.text}`]));
+  const setCell = (i: number, code: string) => onChange({
+    ...c, outcomes: replaceAt(c.outcomes, i, setLink(c.outcomes[i], code, cycleStrength(c.outcomes[i].po?.[code]))),
+  });
+  return (
+    <>
+      <div className="row">
+        <label className="field"><span>Mapped to the outcomes of</span>
+          <select value={c.po_programme} onChange={(e) => onChange({ ...c, po_programme: e.target.value })}>
+            <option value="">{offered[0] ? `${offered[0]} (first programme offered)` : "(no programme yet)"}</option>
+            {offered.slice(1).map((p) => <option key={p} value={p}>{p}</option>)}
+            {c.po_programme && !offered.includes(c.po_programme) && <option value={c.po_programme}>{c.po_programme}</option>}
+          </select>
+        </label>
+      </div>
+      {fw && fw.source === "locf" && (
+        <p className="note"><span>{target || "This course"} has no programme outcomes of its own yet, so the UGC LOCF graduate
+          attributes are shown. An administrator or the HOD can set the programme's own outcomes under <b>Programme outcomes</b>.</span></p>
+      )}
+      {!c.outcomes.length ? <p className="muted">Add course outcomes first.</p> : !cols.length ? <p className="muted">No programme outcomes.</p> : (
+        <div className="copo-wrap">
+          <table className="copo">
+            <thead>
+              <tr><th>CO</th>{cols.map((code) => (
+                <th key={code} title={titles[code] ?? `${code} is not one of ${target}'s outcomes`}
+                  className={known.has(code) ? "" : "unknown"}>{code}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {c.outcomes.map((o, i) => (
+                <tr key={i}>
+                  <th title={o.text}>CO {i + 1}</th>
+                  {cols.map((code) => {
+                    const v = o.po?.[code];
+                    return (
+                      <td key={code}>
+                        <button type="button" className={`cell s${v ?? 0}`}
+                          aria-label={`CO ${i + 1} to ${code}: ${v ? `${v} (${STRENGTH_LABELS[v]})` : "none"}`}
+                          onClick={() => setCell(i, code)}>{v ?? "–"}</button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="hint">Click a cell to set how strongly the course outcome serves the programme outcome:
+        1 = {STRENGTH_LABELS[1]}, 2 = {STRENGTH_LABELS[2]}, 3 = {STRENGTH_LABELS[3]}, – = none. Hover a heading for its text.</p>
+      {fw && fw.outcomes.length > 0 && (
+        <details className="po-list">
+          <summary>{fw.source === "programme" ? `Programme outcomes of ${fw.name || fw.programme}` : fw.source_label}</summary>
+          <ul>{fw.outcomes.map((o) => <li key={o.code}><b>{o.code}</b> {o.title && <b>{o.title}: </b>}{o.text}</li>)}</ul>
+        </details>
+      )}
+    </>
   );
 }

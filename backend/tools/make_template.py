@@ -101,6 +101,7 @@ def main(banner: Path | None, out: Path, institution: list[str]):
     style(doc, "AD Body", align=J)
     style(doc, "AD Item", align=J, left=0.4, hanging=1.0)
     style(doc, "AD Outcome", align=J, left=0.9, hanging=1.3)
+    style(doc, "AD Code", align=J, left=0.4, hanging=1.6)          # PO1 / PSO12 lists
     style(doc, "AD Module", bold=True, before=6, after=2, keep_next=True)
     style(doc, "AD Part", align=J, after=3)
     style(doc, "AD Exercise", bold=True, color=BLUE, before=6, after=2, keep_next=True)
@@ -113,6 +114,10 @@ def main(banner: Path | None, out: Path, institution: list[str]):
         cs.font.bold = True
         if col is not None:
             cs.font.color.rgb = col
+    bl = doc.styles.add_style("ADBloom", 2)          # the Bloom level after each outcome
+    bl.font.italic = True
+    bl.font.color.rgb = RGBColor(0x59, 0x59, 0x59)
+    style(doc, "AD Note", size=9, after=4).font.italic = True
 
     # --- first-page banner and page-number footer --------------------------------
     hp = sec.first_page_header.paragraphs[0]
@@ -186,8 +191,16 @@ def main(banner: Path | None, out: Path, institution: list[str]):
     section("III. COURSE OUTCOMES:")
     doc.add_paragraph("After successful completion of the course, students should be able to:", style="AD Lead")
     tagpara(doc, "{%p for o in outcomes %}")
-    doc.add_paragraph("{{ o.n }}\t{{ o.text }}", style="AD Outcome")
+    p = doc.add_paragraph("{{ o.n }}\t{{ o.text }}", style="AD Outcome")
+    p.add_run("{% if o.bloom %} ({{ o.bloom }}){% endif %}", style="ADBloom")
     tagpara(doc, "{%p endfor %}")
+    # CO-PO mapping: the renderer builds the table from these styles ("Table Grid",
+    # "AD Cell", "ADStrong") because its columns depend on the programme.
+    tagpara(doc, "{%p if copo %}")
+    doc.add_paragraph("Mapping of course outcomes to programme outcomes:", style="AD Lead")
+    doc.add_paragraph("{{p copo }}", style="AD Cell")
+    doc.add_paragraph("{{ copo_note }}", style="AD Note")
+    tagpara(doc, "{%p endif %}")
 
     doc.add_paragraph("IV. COURSE CONTENT:", style="AD Section")
     # theory

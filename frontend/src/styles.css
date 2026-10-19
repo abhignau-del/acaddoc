@@ -137,3 +137,26 @@ fieldset.plain:disabled input, fieldset.plain:disabled textarea, fieldset.plain:
 .modal { width: min(900px, 100%); max-height: 90vh; overflow: auto; }
 .users { border-collapse: collapse; width: 100%; }
 .users th, .users td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: middle; }
+
+/* course outcomes, CO-PO matrix, programme outcomes */
+.bloom { display: flex; flex-direction: column; gap: 2px; flex: 0 0 140px; }
+.bloom .linkish { font-family: inherit; font-size: 12px; text-align: left; }
+.copo-wrap { overflow-x: auto; }
+.copo { border-collapse: collapse; }
+.copo th, .copo td { border: 1px solid var(--line); padding: 2px; text-align: center; min-width: 40px; }
+.copo thead th { font-size: 12px; padding: 4px; cursor: help; }
+.copo th.unknown { color: var(--bad); text-decoration: line-through; }
+.copo th.gap { color: var(--bad); }
+.copo tbody th { padding: 2px 8px; white-space: nowrap; text-align: left; }
+.copo .cell { display: inline-block; width: 34px; height: 28px; line-height: 26px; border: 1px solid transparent; border-radius: 4px; background: none; font: inherit; }
+.copo button.cell { cursor: pointer; }
+.copo button.cell:hover:not(:disabled) { border-color: var(--accent); }
+.copo .s0 { color: var(--muted); }
+.copo .s1 { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.copo .s2 { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.copo .s3 { background: color-mix(in srgb, var(--accent) 60%, transparent); color: var(--accent-text); font-weight: 600; }
+.po-list ul { margin: 6px 0; padding-left: 18px; }
+.prog-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+.code-in { flex: 0 0 70px; font-weight: 600; }
+.list-row textarea { flex: 1; }
+@media (max-width: 800px) { .prog-layout { grid-template-columns: 1fr; } .bloom { flex-basis: auto; } }

@@ -1,6 +1,6 @@
 import type {
-  Action, Course, CourseFull, CourseSummary, HistoryEvent, Issue, MailRow, MailStatus, Role, StructureProblem, User,
-  VersionInfo,
+  Action, BloomLevel, Course, CourseFull, CourseSummary, Framework, HistoryEvent, Issue, MailRow, MailStatus,
+  ProgrammeDetail, ProgrammeOutcome, ProgrammeRecord, ProgrammeSummary, Role, StructureProblem, User, VersionInfo,
 } from "./types";
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
@@ -62,8 +62,15 @@ export const api = {
   history: (code: string) =>
     call<{ events: HistoryEvent[]; versions: VersionInfo[] }>(`/api/courses/${encodeURIComponent(code)}/history`),
   validate: (draft: unknown) =>
-    call<{ structure: StructureProblem[]; issues: Issue[] }>("/api/validate", json("POST", draft)),
+    call<{ structure: StructureProblem[]; issues: Issue[]; framework?: Framework; bloom_suggestions?: (BloomLevel | null)[] }>(
+      "/api/validate", json("POST", draft)),
   programmes: () => call<string[]>("/api/programmes"),
+
+  programmeList: () => call<ProgrammeSummary[]>("/api/programme-outcomes"),
+  programmeGet: (code: string) => call<ProgrammeDetail>(`/api/programme-outcomes/${encodeURIComponent(code)}`),
+  programmeSave: (rec: ProgrammeRecord) =>
+    call<ProgrammeDetail>(`/api/programme-outcomes/${encodeURIComponent(rec.code)}`, json("PUT", rec)),
+  locf: () => call<{ source_label: string; outcomes: ProgrammeOutcome[] }>("/api/frameworks/locf"),
 
   mailStatus: () => call<MailStatus>("/api/admin/mail"),
   mailTest: () => call<MailRow>("/api/admin/mail/test", { method: "POST" }),

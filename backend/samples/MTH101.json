@@ -39,27 +39,58 @@
   "outcomes": [
     {
       "code": "CO1",
-      "text": "Determine the rank of a matrix and solve systems of linear equations."
+      "text": "Determine the rank of a matrix and solve systems of linear equations.",
+      "bloom": "apply",
+      "po": {
+        "PO1": 3,
+        "PO2": 2
+      }
     },
     {
       "code": "CO2",
-      "text": "Compute eigenvalues and eigenvectors and diagonalise square matrices."
+      "text": "Compute eigenvalues and eigenvectors and diagonalise square matrices.",
+      "bloom": "apply",
+      "po": {
+        "PO1": 3,
+        "PO2": 2
+      }
     },
     {
       "code": "CO3",
-      "text": "Apply the Cayley-Hamilton theorem to find inverses and powers of matrices."
+      "text": "Apply the Cayley-Hamilton theorem to find inverses and powers of matrices.",
+      "bloom": "apply",
+      "po": {
+        "PO1": 3,
+        "PO2": 1
+      }
     },
     {
       "code": "CO4",
-      "text": "Apply mean value theorems to problems involving derivatives."
+      "text": "Apply mean value theorems to problems involving derivatives.",
+      "bloom": "apply",
+      "po": {
+        "PO1": 3,
+        "PO2": 2
+      }
     },
     {
       "code": "CO5",
-      "text": "Find maxima and minima of functions of several variables."
+      "text": "Find maxima and minima of functions of several variables.",
+      "bloom": "apply",
+      "po": {
+        "PO1": 3,
+        "PO2": 2,
+        "PO3": 1
+      }
     },
     {
       "code": "CO6",
-      "text": "Evaluate double and triple integrals to find areas and volumes."
+      "text": "Evaluate double and triple integrals to find areas and volumes.",
+      "bloom": "evaluate",
+      "po": {
+        "PO1": 3,
+        "PO2": 2
+      }
     }
   ],
   "modules": [
