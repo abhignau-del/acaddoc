@@ -1,7 +1,7 @@
 // Programme outcomes (POs and PSOs): one list per programme, kept by an administrator or the HOD,
 // and how the courses mapped to it cover each outcome.
 import { useEffect, useState } from "react";
-import { api } from "./api";
+import { api, download } from "./api";
 import { useSession } from "./auth";
 import { move, nextOutcomeCode, removeAt, replaceAt, STRENGTH_LABELS } from "./courseops";
 import { Modal } from "./people";
@@ -44,6 +44,16 @@ function ProgrammeEditor({ code, onSaved }: { code: string; onSaved: () => void 
   const [rec, setRec] = useState<ProgrammeRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState(false);
+
+  async function pack() {
+    setError(null); setNote(null);
+    try {
+      await download(`/api/programme-pack?${new URLSearchParams({ programme: code, include_drafts: String(drafts) })}`,
+        `AcadDoc_${code}_pack.json`);
+      setNote(drafts ? "Programme pack downloaded with current drafts." : "Programme pack downloaded (approved versions).");
+    } catch (e) { setError((e as Error).message); }
+  }
 
   function take(d: ProgrammeDetail) {
     setDetail(d);
@@ -135,6 +145,14 @@ function ProgrammeEditor({ code, onSaved }: { code: string; onSaved: () => void 
         1 = {STRENGTH_LABELS[1]}). Current drafts are included.</p>
       {detail.gaps.length > 0 && detail.courses.length > 0 &&
         <p className="warn">Not addressed by any course: {detail.gaps.join(", ")}.</p>}
+      <h3>Programme pack</h3>
+      <p className="hint">One file with these outcomes and every course offered to {code}, with Bloom levels and CO–PO
+        links, for Curriculum Intelligence or as a backup.</p>
+      <div className="row">
+        <button type="button" className="btn" onClick={pack}>Download programme pack</button>
+        <label className="check"><input type="checkbox" checked={drafts} onChange={(e) => setDrafts(e.target.checked)} />
+          Use current drafts instead of approved versions</label>
+      </div>
       {detail.courses.some((r) => !r.mapped) &&
         <p className="muted">Not mapped yet: {detail.courses.filter((r) => !r.mapped).map((r) => r.course_code).join(", ")}.</p>}
     </div>

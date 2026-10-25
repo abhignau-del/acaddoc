@@ -3,7 +3,8 @@
     python -m acaddoc validate  samples
     python -m acaddoc render    samples/MTH101.json --pdf
     python -m acaddoc handbook  samples --programme CSE --year 2026-27 --pdf
-    (validate/render/handbook take --programmes samples/programmes for programme outcomes)
+    python -m acaddoc pack      samples --programme CSE -o CSE_pack.json   # for Curriculum Intelligence
+    (validate/render/handbook/pack take --programmes samples/programmes for programme outcomes)
     python -m acaddoc import    samples            # load JSON courses into the database
     python -m acaddoc serve     [--seed]           # web editor at http://127.0.0.1:8000
     python -m acaddoc user add  NAME --role admin --display-name "A. Admin" [--department CSE]
@@ -48,7 +49,10 @@ def main(argv=None) -> int:
     h.add_argument("--programme", required=True); h.add_argument("--year", required=True)
     h.add_argument("--out", type=Path, default=Path("out")); h.add_argument("--pdf", action="store_true")
     h.add_argument("--include-invalid", action="store_true")
-    for sp in (v, r, h):
+    pk = sub.add_parser("pack", help="write a programme pack (outcomes + courses) for other tools")
+    pk.add_argument("path", type=Path); pk.add_argument("--programme", required=True)
+    pk.add_argument("-o", "--out", type=Path, required=True)
+    for sp in (v, r, h, pk):
         sp.add_argument("--programmes", type=Path, help="folder of programme-outcome JSON files")
     i = sub.add_parser("import"); i.add_argument("path", type=Path)
     i.add_argument("--replace", action="store_true", help="overwrite courses that already exist")
@@ -96,6 +100,23 @@ def main(argv=None) -> int:
 
     def fw(c):
         return fw_of(mapping_programme(c))
+
+    if a.cmd == "pack":
+        import json
+
+        from .outcomes import framework as fw_default
+        from .pack import PackItem, build_pack
+        from .handbook import semester_of
+        items = [PackItem(c) for c in courses if semester_of(c, a.programme)]
+        if not items:
+            print(f"no courses offered to {a.programme}"); return 1
+        pack = build_pack(a.programme, fw_of(a.programme) or fw_default(a.programme, None), items, basis="current")
+        a.out.write_text(json.dumps(pack, indent=2, ensure_ascii=False) + chr(10), encoding="utf-8")
+        print(f"wrote {a.out}: {len(pack['courses'])} course(s), {len(pack['programme']['outcomes'])} programme outcomes"
+              f" ({pack['programme']['source']})")
+        for n in pack["notes"]:
+            print("  note:", n)
+        return 0
 
     if a.cmd == "validate":
         bad = 0

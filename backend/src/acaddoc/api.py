@@ -12,6 +12,7 @@ generating documents. workflow.py decides who may do what.
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -26,6 +27,7 @@ from . import __version__, auth, notify, workflow
 from .auth import User
 from .handbook import build_handbook, semester_of
 from .outcomes import LOCF_OUTCOMES, LOCF_SOURCE, Framework, course_level, framework, mapping_programme, suggest_bloom
+from .pack import PackItem, build_pack
 from .render import render_docx
 from .schema import Course, ProgrammeRecord
 from .store import Conflict, NotFound, Record, Store
@@ -489,6 +491,29 @@ def create_app(store: Store | None = None, *, secure_cookies: bool | None = None
             raise HTTPException(400, f"Outcome codes must be unique: {', '.join(dup)}")
         st().save_programme(body, by=u)
         return get_programme_outcomes(code, u)
+
+    @app.get("/api/programme-pack")
+    def programme_pack(programme: str, include_drafts: bool = False, _: User = Depends(current_user)):
+        """Every course offered to the programme (approved versions, or current content with
+        include_drafts) and the programme's outcomes, as one JSON file for other tools."""
+        items, left = [], []
+        for r in st().list():
+            if not semester_of(r.course, programme):
+                continue
+            av = r.meta.approved_version
+            if include_drafts:
+                items.append(PackItem(r.course, r.meta.status, None))
+            elif av is not None:
+                items.append(PackItem(st().version(r.meta.code, av), "approved", av))
+            else:
+                left.append((r.course, f"not approved yet ({workflow.LABELS[r.meta.status].lower()})"))
+        if not items and not left:
+            raise HTTPException(404, f"No courses for programme {programme}")
+        rec = st().programme_record(programme)
+        pack = build_pack(programme, fw_of(programme), items, basis="current" if include_drafts else "approved",
+                          left_out=left, department=rec.department if rec else "")
+        name = re.sub(r"[^A-Za-z0-9._-]+", "_", programme).strip("_") or "programme"
+        return JSONResponse(pack, headers={"Content-Disposition": f'attachment; filename="AcadDoc_{name}_pack.json"'})
 
     @app.get("/api/handbook")
     def handbook(programme: str, year: str = Query(..., min_length=4), include_unapproved: bool = False,

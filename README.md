@@ -22,6 +22,11 @@ come out looking identical because no one formats them by hand.
 - **Programme outcomes** (POs and PSOs) are kept per programme by an administrator or the
   programme's HOD. A programme without its own starts from the UGC LOCF graduate attributes.
   The handbook lists them and adds a course × PO matrix that names outcomes no course serves.
+- **Programme pack.** One JSON file per programme with its outcomes and every course
+  offered to it (approved versions, or current drafts), including Bloom levels and
+  CO–PO links. [Curriculum Intelligence](https://github.com/abhignau-del/curriculum-intelligence)
+  reads it for benchmarking, outcome attainment and its NAAC 2.6.1 evidence pack, using
+  the links faculty set instead of inferring them. It also serves as a backup.
 - **Drafts survive** a closed tab or a crash: unsaved work is kept in the browser and
   offered back when the course is reopened.
 - **DOCX per course**, through a Word template (`backend/templates/course_content.docx`).
@@ -97,6 +102,7 @@ For frontend development, run `python -m acaddoc serve` and, in `frontend/`,
 python -m acaddoc validate backend/samples --programmes backend/samples/programmes
 python -m acaddoc render   backend/samples --programmes backend/samples/programmes --out out   # add --pdf
 python -m acaddoc handbook backend/samples --programmes backend/samples/programmes --programme CSE --year 2026-27 --out out
+python -m acaddoc pack     backend/samples --programmes backend/samples/programmes --programme CSE -o CSE_pack.json
 python -m acaddoc import   backend/samples                      # JSON files into the database
 ```
 
@@ -130,6 +136,7 @@ course outcome must be mapped before submission) are in `RULES` at the top of
 | `backend/src/acaddoc/validate.py` | Institutional rules. |
 | `backend/src/acaddoc/render.py` | Course → DOCX through the template. Decides the text, never the look. |
 | `backend/src/acaddoc/handbook.py` | Programme handbook. |
+| `backend/src/acaddoc/pack.py` | The programme pack export. |
 | `backend/src/acaddoc/outcomes.py` | Bloom levels, CO–PO arithmetic, programme outcomes and the UGC LOCF default. |
 | `backend/src/acaddoc/workflow.py` | Who may do what, in which state. |
 | `backend/src/acaddoc/auth.py` | Password hashing (scrypt), sign-in tokens, login throttling. |
